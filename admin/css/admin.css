@@ -1,0 +1,252 @@
+/**
+ * Forge Connector Admin Styles
+ */
+
+.forge-connector-wrap {
+    max-width: 700px;
+    margin: 20px 20px 20px 0;
+}
+
+.forge-connector-wrap h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 23px;
+    font-weight: 400;
+    margin-bottom: 24px;
+}
+
+.forge-logo {
+    width: 32px;
+    height: 32px;
+    color: #2271b1;
+}
+
+/* Cards */
+.forge-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.forge-card h2 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.forge-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.forge-description {
+    color: #646970;
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Status */
+.forge-status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.forge-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.forge-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.forge-status.connected .forge-status-indicator {
+    background: #00a32a;
+    box-shadow: 0 0 0 3px rgba(0, 163, 42, 0.15);
+}
+
+.forge-status.disconnected .forge-status-indicator {
+    background: #dba617;
+    box-shadow: 0 0 0 3px rgba(219, 166, 23, 0.15);
+}
+
+.forge-connected-since {
+    color: #646970;
+    font-size: 13px;
+}
+
+/* Setup Steps */
+.forge-setup-steps {
+    background: #f6f7f7;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.forge-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.forge-step:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.forge-step-number {
+    width: 24px;
+    height: 24px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.forge-step-text {
+    color: #1d2327;
+    font-size: 14px;
+}
+
+/* Form */
+.forge-connect-form {
+    margin-top: 16px;
+}
+
+.forge-input-group {
+    margin-bottom: 16px;
+}
+
+.forge-input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #1d2327;
+}
+
+.forge-input {
+    width: 100%;
+    max-width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.forge-input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.forge-input-hint {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #646970;
+}
+
+/* Actions */
+.forge-form-actions {
+    margin-top: 20px;
+}
+
+.forge-connect-btn {
+    min-width: 150px;
+}
+
+.forge-btn-loading {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.forge-btn-loading .spinner {
+    margin: 0;
+    float: none;
+}
+
+.forge-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* Messages */
+.forge-message {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.forge-message.success {
+    background: #edfaef;
+    border: 1px solid #00a32a;
+    color: #006d1b;
+}
+
+.forge-message.error {
+    background: #fcf0f1;
+    border: 1px solid #d63638;
+    color: #8a1d1f;
+}
+
+/* Site Info */
+.forge-site-info {
+    background: #f6f7f7;
+    border-radius: 4px;
+    padding: 16px;
+}
+
+.forge-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+}
+
+.forge-info-row:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.forge-info-label {
+    color: #646970;
+    font-size: 13px;
+}
+
+.forge-info-value {
+    color: #1d2327;
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    word-break: break-all;
+}
+
+/* Help Card */
+.forge-help {
+    background: #f6f7f7;
+    border-color: #e0e0e0;
+}
+
+.forge-help p {
+    margin: 0 0 12px 0;
+    color: #646970;
+}
