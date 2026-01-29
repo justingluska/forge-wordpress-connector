@@ -224,6 +224,7 @@ class Forge_CTA {
 
     /**
      * Render a CTA to HTML
+     * Matches the layout from Forge's CtaPreview component
      */
     private function render_cta($cta) {
         $id = $cta['id'];
@@ -250,6 +251,7 @@ class Forge_CTA {
             'headline_color' => '#111827',
             'button_bg' => '#2563eb',
             'button_text_color' => '#ffffff',
+            'button_hover_bg' => '#1d4ed8',
             'secondary_button_bg' => 'transparent',
             'secondary_button_text_color' => '#2563eb',
             'secondary_button_border_color' => '#2563eb',
@@ -259,21 +261,49 @@ class Forge_CTA {
             'button_radius' => 6,
             'padding' => 24,
             'shadow' => 'md',
+            'layout' => 'horizontal',
+            'headline_size' => 'xl',
+            'headline_weight' => 'semibold',
+            'text_size' => 'base',
         );
         $style = array_merge($default_style, $cta['style'] ?? array());
 
-        // Build inline styles
+        // Build styles
         $containerStyles = $this->build_container_styles($style, $type);
         $buttonStyles = $this->build_button_styles($style);
+
+        // Determine layout
+        $layout = $style['layout'] ?? 'horizontal';
+        $isHorizontal = ($layout === 'horizontal');
 
         $html = '<div class="forge-cta forge-cta-' . esc_attr($type) . '" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
         $html .= 'data-cta-type="' . esc_attr($type) . '" ';
         $html .= 'style="' . esc_attr($containerStyles) . '">';
 
+        // Inner flex container for horizontal layout
+        if ($isHorizontal && $type === 'banner') {
+            $html .= '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">';
+        }
+
+        // Content wrapper (headline + text)
+        $html .= '<div class="forge-cta-content">';
+
+        // Eyebrow text
+        if (!empty($content['eyebrow_text'])) {
+            $html .= '<span class="forge-cta-eyebrow" style="display:inline-block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:' . esc_attr($style['button_bg']) . ';margin-bottom:8px;">';
+            $html .= esc_html($content['eyebrow_text']);
+            $html .= '</span>';
+        }
+
         // Headline
         if (!empty($content['headline'])) {
-            $headlineStyles = 'color:' . ($style['headline_color'] ?? $style['text_color']) . ';margin:0 0 8px;';
+            $headlineSizes = array('sm' => '14px', 'base' => '16px', 'lg' => '18px', 'xl' => '20px', '2xl' => '24px', '3xl' => '30px');
+            $headlineWeights = array('normal' => '400', 'medium' => '500', 'semibold' => '600', 'bold' => '700');
+            $fontSize = $headlineSizes[$style['headline_size']] ?? '20px';
+            $fontWeight = $headlineWeights[$style['headline_weight']] ?? '600';
+
+            $headlineStyles = 'color:' . esc_attr($style['headline_color']) . ';margin:0 0 8px;font-size:' . $fontSize . ';font-weight:' . $fontWeight . ';line-height:1.3;';
             $html .= '<h3 class="forge-cta-headline" style="' . esc_attr($headlineStyles) . '">';
             $html .= esc_html($content['headline']);
             $html .= '</h3>';
@@ -281,14 +311,23 @@ class Forge_CTA {
 
         // Text
         if (!empty($content['text'])) {
-            $html .= '<p class="forge-cta-text" style="margin:0 0 16px;opacity:0.9;">';
+            $textSizes = array('sm' => '14px', 'base' => '16px', 'lg' => '18px');
+            $textFontSize = $textSizes[$style['text_size']] ?? '16px';
+            $textStyles = 'margin:0;color:' . esc_attr($style['text_color']) . ';font-size:' . $textFontSize . ';opacity:0.9;';
+            $html .= '<p class="forge-cta-text" style="' . esc_attr($textStyles) . '">';
             $html .= esc_html($content['text']);
             $html .= '</p>';
         }
 
+        $html .= '</div>'; // Close content wrapper
+
+        // Buttons wrapper
+        $html .= '<div class="forge-cta-buttons" style="display:flex;gap:12px;align-items:center;flex-shrink:0;' . ($isHorizontal ? '' : 'margin-top:16px;') . '">';
+
         // Primary Button
-        if (!empty($content['button_text']) && !empty($content['button_url'])) {
-            $html .= '<a href="' . esc_url($content['button_url']) . '" ';
+        if (!empty($content['button_text'])) {
+            $buttonUrl = !empty($content['button_url']) ? $content['button_url'] : '#';
+            $html .= '<a href="' . esc_url($buttonUrl) . '" ';
             $html .= 'class="forge-cta-button forge-cta-button-primary" ';
             $html .= 'data-cta-button="primary" ';
             $html .= 'style="' . esc_attr($buttonStyles) . '">';
@@ -297,9 +336,10 @@ class Forge_CTA {
         }
 
         // Secondary Button
-        if (!empty($content['secondary_button_text']) && !empty($content['secondary_button_url'])) {
+        if (!empty($content['secondary_button_text'])) {
             $secondaryStyles = $this->build_secondary_button_styles($style);
-            $html .= ' <a href="' . esc_url($content['secondary_button_url']) . '" ';
+            $secondaryUrl = !empty($content['secondary_button_url']) ? $content['secondary_button_url'] : '#';
+            $html .= '<a href="' . esc_url($secondaryUrl) . '" ';
             $html .= 'class="forge-cta-button forge-cta-button-secondary" ';
             $html .= 'data-cta-button="secondary" ';
             $html .= 'style="' . esc_attr($secondaryStyles) . '">';
@@ -307,9 +347,16 @@ class Forge_CTA {
             $html .= '</a>';
         }
 
+        $html .= '</div>'; // Close buttons wrapper
+
+        // Close horizontal flex container
+        if ($isHorizontal && $type === 'banner') {
+            $html .= '</div>';
+        }
+
         // Close button for popups/floating bars
         if ($type !== 'banner' && !empty($content['show_close_button'])) {
-            $html .= '<button class="forge-cta-close" data-cta-close aria-label="Close">&times;</button>';
+            $html .= '<button class="forge-cta-close" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:24px;cursor:pointer;color:' . esc_attr($style['text_color']) . ';opacity:0.5;" data-cta-close aria-label="Close">&times;</button>';
         }
 
         $html .= '</div>';
