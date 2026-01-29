@@ -74,14 +74,21 @@ class Forge_Auth {
             );
         }
 
-        // Optionally verify site ID matches
-        if (!empty($settings['forge_site_id']) && !empty($site_id)) {
-            if ($settings['forge_site_id'] !== $site_id) {
-                return new WP_Error(
-                    'forge_site_mismatch',
-                    __('Site ID mismatch.', 'forge-connector'),
-                    array('status' => 401)
-                );
+        // Handle site ID: verify match if stored, or store if not yet set
+        if (!empty($site_id)) {
+            if (!empty($settings['forge_site_id'])) {
+                // Verify stored site ID matches
+                if ($settings['forge_site_id'] !== $site_id) {
+                    return new WP_Error(
+                        'forge_site_mismatch',
+                        __('Site ID mismatch.', 'forge-connector'),
+                        array('status' => 401)
+                    );
+                }
+            } else {
+                // Site ID not stored yet - store it now (first authenticated request)
+                $settings['forge_site_id'] = $site_id;
+                update_option('forge_connector_settings', $settings);
             }
         }
 

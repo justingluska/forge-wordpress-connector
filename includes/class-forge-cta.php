@@ -57,7 +57,11 @@ class Forge_CTA {
     public function render_shortcode($atts) {
         $atts = shortcode_atts(array(
             'id' => '',
+            'debug' => '',
         ), $atts, 'forge_cta');
+
+        $debug = !empty($atts['debug']) || (defined('WP_DEBUG') && WP_DEBUG);
+        $debug_output = '';
 
         if (empty($atts['id'])) {
             return '<!-- Forge CTA: No ID specified -->';
@@ -66,20 +70,52 @@ class Forge_CTA {
         $settings = get_option('forge_connector_settings', array());
 
         if (empty($settings['connected']) || empty($settings['forge_site_id'])) {
+            if ($debug) {
+                $debug_html = '<div style="padding:20px;background:#fee;border:1px solid #c00;margin:10px 0;font-size:12px;">';
+                $debug_html .= '<strong>Forge CTA Debug:</strong> Connection issue<br>';
+                $debug_html .= 'connected: ' . ($settings['connected'] ? 'true' : 'false') . '<br>';
+                $debug_html .= 'forge_site_id: ' . esc_html($settings['forge_site_id'] ?? '(not set)') . '<br>';
+                $debug_html .= 'connection_key: ' . (!empty($settings['connection_key']) ? '(set)' : '(not set)') . '<br>';
+                $debug_html .= '<br><strong>Fix:</strong> Try disconnecting and reconnecting in the Forge Connector settings.';
+                $debug_html .= '</div>';
+                return $debug_html;
+            }
             return '<!-- Forge CTA: Not connected to Forge -->';
+        }
+
+        if ($debug) {
+            $debug_output .= '<div style="padding:20px;background:#eff;border:1px solid #09c;margin:10px 0;font-size:12px;">';
+            $debug_output .= '<strong>Forge CTA Debug:</strong><br>';
+            $debug_output .= 'Slug: ' . esc_html($atts['id']) . '<br>';
+            $debug_output .= 'Site ID: ' . esc_html($settings['forge_site_id']) . '<br>';
         }
 
         // Fetch CTA from API (with caching)
         $cta = $this->get_cta_by_slug($atts['id'], $settings);
 
         if (!$cta) {
-            return '<!-- Forge CTA: CTA not found -->';
+            if ($debug) {
+                $debug_output .= 'Status: <span style="color:red;">CTA not found</span><br>';
+                $debug_output .= 'API URL: ' . esc_html($this->api_url . '/ctas/slug/' . $atts['id']) . '<br>';
+                $debug_output .= '</div>';
+                return $debug_output;
+            }
+            return '<!-- Forge CTA: CTA not found for slug: ' . esc_html($atts['id']) . ' -->';
+        }
+
+        if ($debug) {
+            $debug_output .= 'Status: <span style="color:green;">Found</span><br>';
+            $debug_output .= 'CTA ID: ' . esc_html($cta['id']) . '<br>';
+            $debug_output .= 'Type: ' . esc_html($cta['type']) . '<br>';
+            $debug_output .= 'Headline: ' . esc_html($cta['content']['headline'] ?? '(empty)') . '<br>';
+            $debug_output .= 'Button: ' . esc_html($cta['content']['button_text'] ?? '(empty)') . '<br>';
+            $debug_output .= '</div>';
         }
 
         // Track that we've loaded this CTA
         $this->ctas_loaded[$cta['id']] = $cta;
 
-        return $this->render_cta($cta);
+        return $debug_output . $this->render_cta($cta);
     }
 
     /**
@@ -192,8 +228,39 @@ class Forge_CTA {
     private function render_cta($cta) {
         $id = $cta['id'];
         $type = $cta['type'];
-        $content = $cta['content'];
-        $style = $cta['style'];
+
+        // Merge with defaults to handle missing fields from API
+        $default_content = array(
+            'headline' => '',
+            'text' => '',
+            'button_text' => 'Get Started',
+            'button_url' => '#',
+            'secondary_button_text' => '',
+            'secondary_button_url' => '',
+            'show_close_button' => false,
+            'eyebrow_text' => '',
+            'phone' => '',
+            'fine_print' => '',
+        );
+        $content = array_merge($default_content, $cta['content'] ?? array());
+
+        $default_style = array(
+            'background' => '#ffffff',
+            'text_color' => '#374151',
+            'headline_color' => '#111827',
+            'button_bg' => '#2563eb',
+            'button_text_color' => '#ffffff',
+            'secondary_button_bg' => 'transparent',
+            'secondary_button_text_color' => '#2563eb',
+            'secondary_button_border_color' => '#2563eb',
+            'border_color' => '#e5e7eb',
+            'border_width' => 1,
+            'border_radius' => 8,
+            'button_radius' => 6,
+            'padding' => 24,
+            'shadow' => 'md',
+        );
+        $style = array_merge($default_style, $cta['style'] ?? array());
 
         // Build inline styles
         $containerStyles = $this->build_container_styles($style, $type);

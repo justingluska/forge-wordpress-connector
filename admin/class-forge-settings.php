@@ -256,11 +256,46 @@ class Forge_Settings {
             wp_send_json_error(array('message' => __('Permission denied.', 'forge-connector')));
         }
 
+        // Notify Forge about the disconnect (non-blocking)
+        $this->notify_forge_disconnect();
+
         Forge_Auth::disconnect();
 
         wp_send_json_success(array(
             'message' => __('Disconnected successfully.', 'forge-connector'),
             'connected' => false,
+        ));
+    }
+
+    /**
+     * Notify Forge API that this site has disconnected
+     */
+    private function notify_forge_disconnect() {
+        $settings = get_option('forge_connector_settings', array());
+
+        if (empty($settings['connection_key']) || empty($settings['forge_site_id'])) {
+            return; // Can't notify without credentials
+        }
+
+        $api_url = 'https://api.gluska.co/api/webhooks/wordpress/disconnect';
+        $timestamp = time();
+        $body = json_encode(array('action' => 'disconnect'));
+
+        // Sign the request
+        $string_to_sign = "POST\n/api/webhooks/wordpress/disconnect\n{$timestamp}\n{$body}";
+        $signature = hash_hmac('sha256', $string_to_sign, $settings['connection_key']);
+
+        // Send notification (non-blocking - we disconnect locally even if this fails)
+        wp_remote_post($api_url, array(
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'X-Forge-Signature' => $signature,
+                'X-Forge-Timestamp' => (string) $timestamp,
+                'X-Forge-Site-ID' => (string) $settings['forge_site_id'],
+            ),
+            'body' => $body,
+            'timeout' => 5,
+            'blocking' => false, // Don't wait for response
         ));
     }
 }
