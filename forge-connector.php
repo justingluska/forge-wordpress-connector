@@ -44,6 +44,7 @@ class Forge_Connector {
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-media.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-cta.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'admin/class-forge-settings.php';
+        require_once FORGE_CONNECTOR_PLUGIN_DIR . 'admin/class-forge-cta-admin.php';
     }
 
     private function init_hooks() {
@@ -57,6 +58,11 @@ class Forge_Connector {
 
         // Initialize CTA handler (shortcodes, tracking, site-wide CTAs)
         new Forge_CTA();
+
+        // Initialize CTA admin page
+        if (is_admin()) {
+            new Forge_CTA_Admin();
+        }
     }
 
     public function register_rest_routes() {
