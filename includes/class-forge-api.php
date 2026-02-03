@@ -443,6 +443,7 @@ class Forge_API {
 
     /**
      * Fetch available post types with post counts
+     * Field names match frontend expectations: name (display), slug (machine name)
      */
     private function fetch_post_types() {
         $post_types = get_post_types(array('public' => true), 'objects');
@@ -458,13 +459,14 @@ class Forge_API {
             $count = isset($count_obj->publish) ? intval($count_obj->publish) : 0;
 
             $result[] = array(
-                'name' => $post_type->name,
-                'label' => $post_type->label,
-                'singular_label' => $post_type->labels->singular_name,
+                'slug' => $post_type->name,           // Machine name (e.g., 'post')
+                'name' => $post_type->label,          // Display name (e.g., 'Posts')
+                'singular_name' => $post_type->labels->singular_name,
                 'description' => $post_type->description,
+                'public' => $post_type->public,       // Frontend filters by this
                 'hierarchical' => $post_type->hierarchical,
                 'has_archive' => $post_type->has_archive,
-                'supports' => get_all_post_type_supports($post_type->name),
+                'supports' => array_keys(get_all_post_type_supports($post_type->name)),
                 'taxonomies' => get_object_taxonomies($post_type->name),
                 'count' => $count,
             );
