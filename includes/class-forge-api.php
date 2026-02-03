@@ -442,7 +442,7 @@ class Forge_API {
     }
 
     /**
-     * Fetch available post types
+     * Fetch available post types with post counts
      */
     private function fetch_post_types() {
         $post_types = get_post_types(array('public' => true), 'objects');
@@ -453,6 +453,10 @@ class Forge_API {
                 continue; // Skip media
             }
 
+            // Get post count for this post type
+            $count_obj = wp_count_posts($post_type->name);
+            $count = isset($count_obj->publish) ? intval($count_obj->publish) : 0;
+
             $result[] = array(
                 'name' => $post_type->name,
                 'label' => $post_type->label,
@@ -462,6 +466,7 @@ class Forge_API {
                 'has_archive' => $post_type->has_archive,
                 'supports' => get_all_post_type_supports($post_type->name),
                 'taxonomies' => get_object_taxonomies($post_type->name),
+                'count' => $count,
             );
         }
 
