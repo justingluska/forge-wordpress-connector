@@ -250,3 +250,47 @@
     margin: 0 0 12px 0;
     color: #646970;
 }
+
+/* Site URL Copy Box */
+.forge-site-url-box {
+    background: #fff;
+    border: 1px solid #2271b1;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.forge-site-url-box label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+.forge-url-copy-group {
+    display: flex;
+    gap: 8px;
+}
+
+.forge-url-copy-group .forge-input {
+    flex: 1;
+    background: #f6f7f7;
+    color: #1d2327;
+}
+
+.forge-copy-url-btn {
+    min-width: 80px;
+    white-space: nowrap;
+}
+
+.forge-copy-url-btn.copied {
+    background: #00a32a;
+    border-color: #00a32a;
+    color: #fff;
+}
+
+.forge-site-url-box .forge-input-hint {
+    margin-top: 8px;
+    color: #2271b1;
+}

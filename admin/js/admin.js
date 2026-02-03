@@ -20,6 +20,50 @@
             $('#forge-connect-form').on('submit', this.handleConnect.bind(this));
             $('#forge-test-connection').on('click', this.handleTest.bind(this));
             $('#forge-disconnect').on('click', this.handleDisconnect.bind(this));
+            $('#forge-copy-url').on('click', this.handleCopyUrl.bind(this));
+        },
+
+        /**
+         * Handle copy URL button
+         */
+        handleCopyUrl: function(e) {
+            var $btn = $(e.currentTarget);
+            var $copyText = $btn.find('.forge-copy-text');
+            var $copiedText = $btn.find('.forge-copied-text');
+            var url = $('#forge-site-url').val();
+
+            // Copy to clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function() {
+                    // Show copied state
+                    $copyText.hide();
+                    $copiedText.show();
+                    $btn.addClass('copied');
+
+                    // Reset after 2 seconds
+                    setTimeout(function() {
+                        $copyText.show();
+                        $copiedText.hide();
+                        $btn.removeClass('copied');
+                    }, 2000);
+                });
+            } else {
+                // Fallback for older browsers
+                var $input = $('#forge-site-url');
+                $input.select();
+                document.execCommand('copy');
+
+                // Show copied state
+                $copyText.hide();
+                $copiedText.show();
+                $btn.addClass('copied');
+
+                setTimeout(function() {
+                    $copyText.show();
+                    $copiedText.hide();
+                    $btn.removeClass('copied');
+                }, 2000);
+            }
         },
 
         /**

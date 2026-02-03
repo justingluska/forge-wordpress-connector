@@ -94,16 +94,36 @@ class Forge_Settings {
                         <div class="forge-setup-steps">
                             <div class="forge-step">
                                 <span class="forge-step-number">1</span>
-                                <span class="forge-step-text"><?php _e('Go to your Forge dashboard', 'forge-connector'); ?></span>
+                                <span class="forge-step-text"><?php _e('Copy your site URL and go to Forge dashboard', 'forge-connector'); ?></span>
                             </div>
                             <div class="forge-step">
                                 <span class="forge-step-number">2</span>
-                                <span class="forge-step-text"><?php _e('Add a new WordPress connection', 'forge-connector'); ?></span>
+                                <span class="forge-step-text"><?php _e('Add a new WordPress connection using the Plugin method', 'forge-connector'); ?></span>
                             </div>
                             <div class="forge-step">
                                 <span class="forge-step-number">3</span>
                                 <span class="forge-step-text"><?php _e('Copy the connection key and paste it below', 'forge-connector'); ?></span>
                             </div>
+                        </div>
+
+                        <div class="forge-site-url-box">
+                            <label><?php _e('Your Site URL', 'forge-connector'); ?></label>
+                            <div class="forge-url-copy-group">
+                                <input
+                                    type="text"
+                                    id="forge-site-url"
+                                    value="<?php echo esc_attr(get_site_url()); ?>"
+                                    class="forge-input"
+                                    readonly
+                                >
+                                <button type="button" class="button forge-copy-url-btn" id="forge-copy-url">
+                                    <span class="forge-copy-text"><?php _e('Copy', 'forge-connector'); ?></span>
+                                    <span class="forge-copied-text" style="display:none;"><?php _e('Copied!', 'forge-connector'); ?></span>
+                                </button>
+                            </div>
+                            <p class="forge-input-hint">
+                                <?php _e('Paste this URL in Forge when creating your connection', 'forge-connector'); ?>
+                            </p>
                         </div>
 
                         <form class="forge-connect-form" id="forge-connect-form">
