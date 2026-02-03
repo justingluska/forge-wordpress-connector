@@ -27,33 +27,14 @@
          * Handle copy URL button
          */
         handleCopyUrl: function(e) {
+            var self = this;
             var $btn = $(e.currentTarget);
             var $copyText = $btn.find('.forge-copy-text');
             var $copiedText = $btn.find('.forge-copied-text');
             var url = $('#forge-site-url').val();
 
-            // Copy to clipboard
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(url).then(function() {
-                    // Show copied state
-                    $copyText.hide();
-                    $copiedText.show();
-                    $btn.addClass('copied');
-
-                    // Reset after 2 seconds
-                    setTimeout(function() {
-                        $copyText.show();
-                        $copiedText.hide();
-                        $btn.removeClass('copied');
-                    }, 2000);
-                });
-            } else {
-                // Fallback for older browsers
-                var $input = $('#forge-site-url');
-                $input.select();
-                document.execCommand('copy');
-
-                // Show copied state
+            // Show copied state helper
+            function showCopiedState() {
                 $copyText.hide();
                 $copiedText.show();
                 $btn.addClass('copied');
@@ -63,6 +44,38 @@
                     $copiedText.hide();
                     $btn.removeClass('copied');
                 }, 2000);
+            }
+
+            // Fallback copy method using temporary textarea
+            function fallbackCopy() {
+                var textarea = document.createElement('textarea');
+                textarea.value = url;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+
+                try {
+                    document.execCommand('copy');
+                    showCopiedState();
+                } catch (err) {
+                    console.error('Fallback copy failed:', err);
+                }
+
+                document.body.removeChild(textarea);
+            }
+
+            // Try modern clipboard API first, fall back to execCommand
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function() {
+                    showCopiedState();
+                }).catch(function(err) {
+                    console.warn('Clipboard API failed, using fallback:', err);
+                    fallbackCopy();
+                });
+            } else {
+                fallbackCopy();
             }
         },
 
