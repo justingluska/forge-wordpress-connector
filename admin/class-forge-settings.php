@@ -229,11 +229,11 @@ class Forge_Settings {
             wp_send_json_error(array('message' => __('Invalid connection key format. Key should start with "fk_".', 'forge-connector')));
         }
 
-        // Store the connection
+        // Store the connection key (actual verification happens when Forge connects)
         Forge_Auth::store_connection($key);
 
         wp_send_json_success(array(
-            'message' => __('Connected successfully!', 'forge-connector'),
+            'message' => __('Key saved! Click "Verify Connection" in Forge to complete setup.', 'forge-connector'),
             'connected' => true,
         ));
     }
