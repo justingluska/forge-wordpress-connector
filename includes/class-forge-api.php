@@ -14,6 +14,31 @@ class Forge_API {
     const NAMESPACE = 'forge/v1';
 
     /**
+     * Initialize API - add hooks for cache control
+     */
+    public function init() {
+        // Prevent caching of all Forge API responses
+        add_filter('rest_post_dispatch', array($this, 'add_cache_headers'), 10, 3);
+    }
+
+    /**
+     * Add no-cache headers to all Forge API responses
+     * This prevents WP Engine and other caching layers from caching authenticated responses
+     */
+    public function add_cache_headers($response, $server, $request) {
+        $route = $request->get_route();
+
+        // Only apply to Forge API endpoints
+        if (strpos($route, '/forge/v1') === 0) {
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+            $response->header('Pragma', 'no-cache');
+            $response->header('Expires', '0');
+        }
+
+        return $response;
+    }
+
+    /**
      * Register all REST routes
      */
     public function register_routes() {
@@ -103,8 +128,12 @@ class Forge_API {
 
     /**
      * Permission callback - validates HMAC signature
+     * IMPORTANT: This runs BEFORE the callback handler
      */
     public function check_auth($request) {
+        // Prevent caching of authenticated API responses - set early
+        nocache_headers();
+
         $result = Forge_Auth::validate_request($request);
 
         if (is_wp_error($result)) {
@@ -219,6 +248,9 @@ class Forge_API {
      * Handle full sync - returns all site data
      */
     public function handle_sync($request) {
+        // Prevent caching of authenticated API responses
+        nocache_headers();
+
         return rest_ensure_response(array(
             'success' => true,
             'site' => $this->get_site_info(),

@@ -67,6 +67,7 @@ class Forge_Connector {
 
     public function register_rest_routes() {
         $api = new Forge_API();
+        $api->init();
         $api->register_routes();
     }
 
