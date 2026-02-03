@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Build
+node_modules/
+vendor/
+*.log
+
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
