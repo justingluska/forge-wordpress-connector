@@ -245,6 +245,8 @@ class Forge_CTA {
             'button_text' => '',
             'button_url' => '#',
             'button_style' => 'solid',
+            'button_icon' => '',
+            'button_icon_position' => 'left',
             'secondary_button_text' => '',
             'secondary_button_url' => '#',
             'secondary_button_style' => 'outline',
@@ -255,6 +257,10 @@ class Forge_CTA {
             'image_url' => '',
             'image_position' => 'top',
             'image_alt' => '',
+            'image_scale' => 100,
+            'image_fit' => 'cover',
+            'is_lead_magnet' => false,
+            'lead_magnet_title' => '',
         ), $content);
 
         // Apply default style values (matching Forge defaults)
@@ -282,11 +288,20 @@ class Forge_CTA {
             'padding_y' => null,
             'gap' => 12,
             'shadow' => 'md',
+            'shadow_offset_x' => 0,
+            'shadow_offset_y' => 4,
+            'shadow_blur' => 12,
+            'shadow_color' => 'rgba(0, 0, 0, 0.15)',
             'layout' => 'horizontal',
+            'animation' => 'none',
+            'custom_css' => '',
+            'bg_pattern' => 'none',
+            'bg_pattern_opacity' => 10,
+            'bg_pattern_color' => '#000000',
         ), $style);
 
         // Build shadow CSS
-        $shadowCss = $this->get_shadow_style($style['shadow']);
+        $shadowCss = $this->get_shadow_style($style);
 
         // Determine layout
         $isHorizontal = ($style['layout'] ?? 'horizontal') === 'horizontal';
@@ -297,34 +312,42 @@ class Forge_CTA {
         $paddingY = $style['padding_y'] ?? $style['padding'];
         $paddingX = $style['padding_x'] ?? $style['padding'];
 
+        // Get animation class
+        $animationCss = $this->get_animation_style($style['animation'] ?? 'none');
+
         // Render based on type
+        $html = '';
+
         if ($type === 'banner') {
-            return $this->render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss);
+            $html = $this->render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss, $animationCss);
         } elseif ($type === 'floating-bar') {
-            return $this->render_floating_bar_cta($id, $content, $style, $shadowCss);
+            $html = $this->render_floating_bar_cta($id, $content, $style, $shadowCss, $animationCss);
         } elseif ($type === 'popup') {
-            return $this->render_popup_cta($id, $content, $style, $shadowCss);
+            $html = $this->render_popup_cta($id, $content, $style, $shadowCss, $animationCss);
         }
 
-        return '';
+        // Apply custom CSS if provided
+        if (!empty($style['custom_css'])) {
+            $html .= '<style>.forge-cta[data-cta-id="' . esc_attr($id) . '"] { ' . esc_html($style['custom_css']) . ' }</style>';
+        }
+
+        return $html;
     }
 
     /**
      * Render a banner (inline) CTA
      */
-    private function render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss) {
+    private function render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss, $animationCss) {
         $html = '';
 
-        // Container styles with CSS isolation to prevent theme conflicts
+        // Base container styles with CSS isolation
         $containerStyles = array(
-            // CSS Reset for isolation
             'all' => 'initial',
             'display' => 'block',
             'box-sizing' => 'border-box',
             'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             'font-size' => '16px',
             'line-height' => '1.5',
-            // CTA-specific styles
             'background-color' => $style['background'],
             'color' => $style['text_color'],
             'border-radius' => $style['border_radius'] . 'px',
@@ -344,131 +367,72 @@ class Forge_CTA {
             $containerStyles['box-shadow'] = $shadowCss;
         }
 
+        if ($animationCss) {
+            $containerStyles['animation'] = $animationCss;
+        }
+
+        // Background pattern
+        $patternStyles = $this->get_background_pattern($style);
+
         $html .= '<div class="forge-cta forge-cta-banner" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
         $html .= 'data-cta-type="banner" ';
         $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
 
-        // Default horizontal banner layout (no image)
-        if (!$hasImage) {
-            // Flex container
-            $flexStyles = array(
-                'display' => 'flex',
-                'gap' => ($style['gap'] ?? 16) . 'px',
-                'position' => 'relative',
-                'z-index' => '10',
+        // Pattern overlay
+        if (!empty($patternStyles)) {
+            $html .= '<div style="position:absolute;inset:0;pointer-events:none;' . $this->build_style_string($patternStyles) . '"></div>';
+        }
+
+        // Image as background
+        if ($hasImage && $imagePosition === 'background') {
+            $imgStyles = array(
+                'position' => 'absolute',
+                'top' => '0',
+                'left' => '0',
+                'width' => '100%',
+                'height' => '100%',
+                'object-fit' => $content['image_fit'] ?? 'cover',
+                'z-index' => '0',
             );
-
-            if ($isHorizontal) {
-                $flexStyles['align-items'] = 'center';
-                $flexStyles['justify-content'] = 'space-between';
-                $flexStyles['flex-wrap'] = 'wrap';
-            } else {
-                $flexStyles['flex-direction'] = 'column';
-                $flexStyles['text-align'] = 'center';
-                $flexStyles['align-items'] = 'center';
+            if (!empty($content['image_scale']) && $content['image_scale'] != 100) {
+                $imgStyles['transform'] = 'scale(' . ($content['image_scale'] / 100) . ')';
             }
+            $html .= '<img src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" style="' . $this->build_style_string($imgStyles) . '" />';
 
-            $html .= '<div style="' . $this->build_style_string($flexStyles) . '">';
+            // Overlay for readability
+            $html .= '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:1;"></div>';
+        }
 
-            // Content side (headline + text)
-            $html .= '<div style="' . ($isHorizontal ? '' : 'text-align:center;') . '">';
+        // Main content wrapper
+        $wrapperStyles = array(
+            'position' => 'relative',
+            'z-index' => '10',
+        );
 
-            // Eyebrow
-            if (!empty($content['eyebrow_text'])) {
-                $html .= '<span style="display:block;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;opacity:0.7;margin-bottom:4px;">';
-                $html .= esc_html($content['eyebrow_text']);
-                $html .= '</span>';
-            }
-
-            // Headline
-            if (!empty($content['headline'])) {
-                $headlineSize = $this->get_font_size($style['headline_size'] ?? 'lg');
-                $headlineWeight = $this->get_font_weight($style['headline_weight'] ?? 'semibold');
-                $headlineStyles = array(
-                    'color' => $style['headline_color'] ?? $style['text_color'],
-                    'margin' => '0',
-                    'font-size' => $headlineSize,
-                    'font-weight' => $headlineWeight,
-                    'line-height' => '1.3',
-                );
-                $html .= '<h3 style="' . $this->build_style_string($headlineStyles) . '">';
-                $html .= esc_html($content['headline']);
-                $html .= '</h3>';
-            }
-
-            // Text
-            if (!empty($content['text'])) {
-                $textSize = $this->get_font_size($style['text_size'] ?? 'sm');
-                $textStyles = array(
-                    'margin' => '4px 0 0 0',
-                    'font-size' => $textSize,
-                    'opacity' => '0.9',
-                    'color' => $style['text_color'],
-                );
-                $html .= '<p style="' . $this->build_style_string($textStyles) . '">';
-                $html .= esc_html($content['text']);
-                $html .= '</p>';
-            }
-
-            $html .= '</div>'; // End content side
-
-            // Buttons side
-            $buttonContainerStyles = array(
-                'display' => 'flex',
-                'gap' => ($style['gap'] ?? 12) . 'px',
-                'align-items' => 'center',
-                'flex-shrink' => '0',
-            );
-
-            if (!$isHorizontal) {
-                $buttonContainerStyles['flex-direction'] = 'column';
-                $buttonContainerStyles['width'] = '100%';
-                $buttonContainerStyles['margin-top'] = '16px';
-            }
-
-            $html .= '<div style="' . $this->build_style_string($buttonContainerStyles) . '">';
-
-            // Phone number
-            if (!empty($content['phone'])) {
-                $phoneStyles = array(
-                    'display' => 'flex',
-                    'align-items' => 'center',
-                    'gap' => '8px',
-                    'font-weight' => '500',
-                    'white-space' => 'nowrap',
-                    'color' => $style['button_bg'],
-                    'text-decoration' => 'none',
-                );
-                $html .= '<a href="tel:' . esc_attr(preg_replace('/\D/', '', $content['phone'])) . '" style="' . $this->build_style_string($phoneStyles) . '">';
-                $html .= esc_html($content['phone']);
-                $html .= '</a>';
-            }
-
-            // Primary button
-            if (!empty($content['button_text'])) {
-                $html .= $this->render_button(
-                    $content['button_text'],
-                    $content['button_url'],
-                    true,
-                    $content['button_style'] ?? 'solid',
-                    $style
-                );
-            }
-
-            // Secondary button
-            if (!empty($content['secondary_button_text'])) {
-                $html .= $this->render_button(
-                    $content['secondary_button_text'],
-                    $content['secondary_button_url'],
-                    false,
-                    $content['secondary_button_style'] ?? 'outline',
-                    $style
-                );
-            }
-
-            $html .= '</div>'; // End buttons side
-            $html .= '</div>'; // End flex container
+        // Determine layout based on image position
+        if ($hasImage && $imagePosition === 'top') {
+            // Image on top - stacked layout
+            $html .= '<div style="' . $this->build_style_string($wrapperStyles) . '">';
+            $html .= $this->render_image($content, 'top');
+            $html .= '<div style="margin-top:16px;">';
+            $html .= $this->render_banner_content($content, $style, false);
+            $html .= '</div>';
+            $html .= '</div>';
+        } elseif ($hasImage && ($imagePosition === 'left' || $imagePosition === 'right')) {
+            // Image on side - flex layout
+            $flexDir = $imagePosition === 'right' ? 'row-reverse' : 'row';
+            $html .= '<div style="display:flex;gap:24px;align-items:center;flex-direction:' . $flexDir . ';' . $this->build_style_string($wrapperStyles) . '">';
+            $html .= $this->render_image($content, $imagePosition);
+            $html .= '<div style="flex:1;">';
+            $html .= $this->render_banner_content($content, $style, $isHorizontal);
+            $html .= '</div>';
+            $html .= '</div>';
+        } else {
+            // No image or background image - standard layout
+            $html .= '<div style="' . $this->build_style_string($wrapperStyles) . '">';
+            $html .= $this->render_banner_content($content, $style, $isHorizontal);
+            $html .= '</div>';
         }
 
         // Fine print
@@ -484,20 +448,177 @@ class Forge_CTA {
     }
 
     /**
+     * Render image element
+     */
+    private function render_image($content, $position) {
+        if (empty($content['image_url'])) return '';
+
+        $imgStyles = array(
+            'display' => 'block',
+            'object-fit' => $content['image_fit'] ?? 'cover',
+        );
+
+        if ($position === 'top') {
+            $imgStyles['width'] = '100%';
+            $imgStyles['max-height'] = '200px';
+            $imgStyles['border-radius'] = '8px';
+        } elseif ($position === 'left' || $position === 'right') {
+            $imgStyles['width'] = '128px';
+            $imgStyles['height'] = '128px';
+            $imgStyles['border-radius'] = '8px';
+            $imgStyles['flex-shrink'] = '0';
+        }
+
+        if (!empty($content['image_scale']) && $content['image_scale'] != 100) {
+            $imgStyles['transform'] = 'scale(' . ($content['image_scale'] / 100) . ')';
+        }
+
+        return '<img src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" style="' . $this->build_style_string($imgStyles) . '" />';
+    }
+
+    /**
+     * Render banner content (headline, text, buttons)
+     */
+    private function render_banner_content($content, $style, $isHorizontal) {
+        $html = '';
+
+        $flexStyles = array(
+            'display' => 'flex',
+            'gap' => ($style['gap'] ?? 16) . 'px',
+        );
+
+        if ($isHorizontal) {
+            $flexStyles['align-items'] = 'center';
+            $flexStyles['justify-content'] = 'space-between';
+            $flexStyles['flex-wrap'] = 'wrap';
+        } else {
+            $flexStyles['flex-direction'] = 'column';
+            $flexStyles['text-align'] = 'center';
+            $flexStyles['align-items'] = 'center';
+        }
+
+        $html .= '<div style="' . $this->build_style_string($flexStyles) . '">';
+
+        // Content side (headline + text)
+        $contentAlign = $isHorizontal ? '' : 'text-align:center;';
+        $html .= '<div style="' . $contentAlign . '">';
+
+        // Eyebrow
+        if (!empty($content['eyebrow_text'])) {
+            $html .= '<span style="display:block;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;opacity:0.7;margin-bottom:4px;">';
+            $html .= esc_html($content['eyebrow_text']);
+            $html .= '</span>';
+        }
+
+        // Headline
+        if (!empty($content['headline'])) {
+            $headlineSize = $this->get_font_size($style['headline_size'] ?? 'lg');
+            $headlineWeight = $this->get_font_weight($style['headline_weight'] ?? 'semibold');
+            $headlineStyles = array(
+                'color' => $style['headline_color'] ?? $style['text_color'],
+                'margin' => '0',
+                'font-size' => $headlineSize,
+                'font-weight' => $headlineWeight,
+                'line-height' => '1.3',
+            );
+            $html .= '<h3 style="' . $this->build_style_string($headlineStyles) . '">';
+            $html .= esc_html($content['headline']);
+            $html .= '</h3>';
+        }
+
+        // Text
+        if (!empty($content['text'])) {
+            $textSize = $this->get_font_size($style['text_size'] ?? 'sm');
+            $textStyles = array(
+                'margin' => '4px 0 0 0',
+                'font-size' => $textSize,
+                'opacity' => '0.9',
+                'color' => $style['text_color'],
+            );
+            $html .= '<p style="' . $this->build_style_string($textStyles) . '">';
+            $html .= esc_html($content['text']);
+            $html .= '</p>';
+        }
+
+        $html .= '</div>'; // End content side
+
+        // Buttons side
+        $buttonContainerStyles = array(
+            'display' => 'flex',
+            'gap' => ($style['gap'] ?? 12) . 'px',
+            'align-items' => 'center',
+            'flex-shrink' => '0',
+        );
+
+        if (!$isHorizontal) {
+            $buttonContainerStyles['flex-direction'] = 'column';
+            $buttonContainerStyles['width'] = '100%';
+            $buttonContainerStyles['margin-top'] = '16px';
+        }
+
+        $html .= '<div style="' . $this->build_style_string($buttonContainerStyles) . '">';
+
+        // Phone number
+        if (!empty($content['phone'])) {
+            $phoneStyles = array(
+                'display' => 'flex',
+                'align-items' => 'center',
+                'gap' => '8px',
+                'font-weight' => '500',
+                'white-space' => 'nowrap',
+                'color' => $style['button_bg'],
+                'text-decoration' => 'none',
+            );
+            $html .= '<a href="tel:' . esc_attr(preg_replace('/\D/', '', $content['phone'])) . '" style="' . $this->build_style_string($phoneStyles) . '">';
+            if (!empty($content['show_phone_icon'])) {
+                $html .= $this->get_phone_icon($style['button_bg']);
+            }
+            $html .= esc_html($content['phone']);
+            $html .= '</a>';
+        }
+
+        // Primary button
+        if (!empty($content['button_text'])) {
+            $html .= $this->render_button(
+                $content['button_text'],
+                $content['button_url'],
+                true,
+                $content['button_style'] ?? 'solid',
+                $style,
+                !empty($content['is_lead_magnet'])
+            );
+        }
+
+        // Secondary button
+        if (!empty($content['secondary_button_text'])) {
+            $html .= $this->render_button(
+                $content['secondary_button_text'],
+                $content['secondary_button_url'],
+                false,
+                $content['secondary_button_style'] ?? 'outline',
+                $style,
+                false
+            );
+        }
+
+        $html .= '</div>'; // End buttons side
+        $html .= '</div>'; // End flex container
+
+        return $html;
+    }
+
+    /**
      * Render a floating bar CTA
      */
-    private function render_floating_bar_cta($id, $content, $style, $shadowCss) {
+    private function render_floating_bar_cta($id, $content, $style, $shadowCss, $animationCss) {
         $position = $style['position'] ?? 'bottom';
 
-        // Container styles with CSS isolation
         $containerStyles = array(
-            // CSS Reset for isolation
             'all' => 'initial',
             'box-sizing' => 'border-box',
             'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             'font-size' => '16px',
             'line-height' => '1.5',
-            // Floating bar specific
             'position' => 'fixed',
             'left' => '0',
             'right' => '0',
@@ -515,6 +636,10 @@ class Forge_CTA {
 
         if ($shadowCss) {
             $containerStyles['box-shadow'] = $shadowCss;
+        }
+
+        if ($animationCss) {
+            $containerStyles['animation'] = $animationCss;
         }
 
         $html = '<div class="forge-cta forge-cta-floating-bar" ';
@@ -536,7 +661,7 @@ class Forge_CTA {
 
         // Button
         if (!empty($content['button_text'])) {
-            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style);
+            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style, !empty($content['is_lead_magnet']));
         }
 
         // Close button
@@ -552,19 +677,16 @@ class Forge_CTA {
     /**
      * Render a popup CTA
      */
-    private function render_popup_cta($id, $content, $style, $shadowCss) {
-        // Backdrop with high z-index
+    private function render_popup_cta($id, $content, $style, $shadowCss, $animationCss) {
+        // Backdrop
         $html = '<div class="forge-cta-backdrop" style="all:initial;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999999;" data-cta-backdrop></div>';
 
-        // Container styles with CSS isolation
         $containerStyles = array(
-            // CSS Reset for isolation
             'all' => 'initial',
             'box-sizing' => 'border-box',
             'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             'font-size' => '16px',
             'line-height' => '1.5',
-            // Popup specific
             'position' => 'fixed',
             'top' => '50%',
             'left' => '50%',
@@ -580,6 +702,10 @@ class Forge_CTA {
 
         if ($shadowCss) {
             $containerStyles['box-shadow'] = $shadowCss;
+        }
+
+        if ($animationCss) {
+            $containerStyles['animation'] = $animationCss;
         }
 
         $html .= '<div class="forge-cta forge-cta-popup" ';
@@ -605,10 +731,10 @@ class Forge_CTA {
         // Buttons
         $html .= '<div style="display:flex;flex-direction:column;gap:12px;align-items:center;">';
         if (!empty($content['button_text'])) {
-            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style);
+            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style, !empty($content['is_lead_magnet']));
         }
         if (!empty($content['secondary_button_text'])) {
-            $html .= $this->render_button($content['secondary_button_text'], $content['secondary_button_url'], false, 'outline', $style);
+            $html .= $this->render_button($content['secondary_button_text'], $content['secondary_button_url'], false, 'outline', $style, false);
         }
         $html .= '</div>';
 
@@ -622,7 +748,7 @@ class Forge_CTA {
      * Render a button element
      * Matches the renderButton function in Forge's cta-editor.tsx
      */
-    private function render_button($text, $url, $isPrimary, $buttonStyle, $style) {
+    private function render_button($text, $url, $isPrimary, $buttonStyle, $style, $showDownloadIcon = false) {
         if (empty($text)) return '';
 
         // Get colors based on primary/secondary
@@ -637,7 +763,9 @@ class Forge_CTA {
 
         // Build button styles based on style type
         $buttonStyles = array(
-            'display' => 'inline-block',
+            'display' => 'inline-flex',
+            'align-items' => 'center',
+            'gap' => '8px',
             'font-weight' => '500',
             'text-decoration' => 'none',
             'white-space' => 'nowrap',
@@ -648,6 +776,7 @@ class Forge_CTA {
             'line-height' => '1.5',
             'text-align' => 'center',
             'transition' => 'all 0.2s ease',
+            'font-family' => 'inherit',
         );
 
         if ($effectiveStyle === 'solid') {
@@ -668,6 +797,12 @@ class Forge_CTA {
         $html .= 'class="forge-cta-button forge-cta-button-' . ($isPrimary ? 'primary' : 'secondary') . '" ';
         $html .= 'data-cta-button="' . ($isPrimary ? 'primary' : 'secondary') . '" ';
         $html .= 'style="' . $this->build_style_string($buttonStyles) . '">';
+
+        // Download icon for lead magnets
+        if ($showDownloadIcon) {
+            $html .= $this->get_download_icon($textColor);
+        }
+
         $html .= esc_html($text);
         $html .= '</a>';
 
@@ -675,9 +810,25 @@ class Forge_CTA {
     }
 
     /**
-     * Get shadow CSS value
+     * Get shadow CSS value - matches Forge's getShadowStyle function
      */
-    private function get_shadow_style($shadow) {
+    private function get_shadow_style($style) {
+        $shadow = $style['shadow'] ?? 'md';
+
+        if ($shadow === 'none') {
+            return '';
+        }
+
+        // Check if custom shadow values are set
+        if (isset($style['shadow_offset_x']) || isset($style['shadow_offset_y']) || isset($style['shadow_blur']) || isset($style['shadow_color'])) {
+            $x = $style['shadow_offset_x'] ?? 0;
+            $y = $style['shadow_offset_y'] ?? 4;
+            $blur = $style['shadow_blur'] ?? 12;
+            $color = $style['shadow_color'] ?? 'rgba(0, 0, 0, 0.15)';
+            return "{$x}px {$y}px {$blur}px {$color}";
+        }
+
+        // Fallback to preset shadows
         $shadows = array(
             'none' => '',
             'sm' => '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
@@ -687,6 +838,103 @@ class Forge_CTA {
         );
 
         return $shadows[$shadow] ?? $shadows['md'];
+    }
+
+    /**
+     * Get background pattern styles - matches Forge's getBackgroundPattern function
+     */
+    private function get_background_pattern($style) {
+        $pattern = $style['bg_pattern'] ?? 'none';
+
+        if ($pattern === 'none') {
+            return array();
+        }
+
+        $opacity = ($style['bg_pattern_opacity'] ?? 10) / 100;
+        $color = $style['bg_pattern_color'] ?? '#000000';
+        $patternColor = $this->apply_opacity_to_color($color, $opacity);
+
+        $patterns = array(
+            'dots' => "radial-gradient({$patternColor} 1px, transparent 1px)",
+            'grid' => "linear-gradient({$patternColor} 1px, transparent 1px), linear-gradient(90deg, {$patternColor} 1px, transparent 1px)",
+            'diagonal-lines' => "repeating-linear-gradient(45deg, transparent, transparent 10px, {$patternColor} 10px, {$patternColor} 11px)",
+        );
+
+        $sizes = array(
+            'dots' => '20px 20px',
+            'grid' => '20px 20px, 20px 20px',
+            'diagonal-lines' => 'auto',
+        );
+
+        if (!isset($patterns[$pattern])) {
+            return array();
+        }
+
+        return array(
+            'background-image' => $patterns[$pattern],
+            'background-size' => $sizes[$pattern],
+        );
+    }
+
+    /**
+     * Apply opacity to a hex color
+     */
+    private function apply_opacity_to_color($color, $opacity) {
+        // Handle hex colors
+        if (strpos($color, '#') === 0) {
+            $hex = ltrim($color, '#');
+            if (strlen($hex) === 3) {
+                $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+            }
+            $r = hexdec(substr($hex, 0, 2));
+            $g = hexdec(substr($hex, 2, 2));
+            $b = hexdec(substr($hex, 4, 2));
+            return "rgba({$r},{$g},{$b},{$opacity})";
+        }
+
+        // Handle rgba - replace alpha
+        if (strpos($color, 'rgba') === 0) {
+            return preg_replace('/[\d.]+\)$/', $opacity . ')', $color);
+        }
+
+        // Handle rgb - convert to rgba
+        if (strpos($color, 'rgb(') === 0) {
+            return str_replace('rgb(', 'rgba(', str_replace(')', ",{$opacity})", $color));
+        }
+
+        return $color;
+    }
+
+    /**
+     * Get animation CSS
+     */
+    private function get_animation_style($animation) {
+        if ($animation === 'none') {
+            return '';
+        }
+
+        $animations = array(
+            'fade' => 'forgeFadeIn 0.3s ease-out',
+            'slide-up' => 'forgeSlideUp 0.3s ease-out',
+            'slide-down' => 'forgeSlideDown 0.3s ease-out',
+            'scale' => 'forgeScale 0.3s ease-out',
+        );
+
+        // Output keyframes once
+        static $keyframes_added = false;
+        if (!$keyframes_added && isset($animations[$animation])) {
+            add_action('wp_footer', function() {
+                echo '<style>
+                    @keyframes forgeFadeIn { from { opacity: 0; } to { opacity: 1; } }
+                    @keyframes forgeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+                    @keyframes forgeSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+                    @keyframes forgeScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                </style>';
+            }, 5);
+            $keyframes_added = true;
+        }
+
+        return $animations[$animation] ?? '';
     }
 
     /**
@@ -718,6 +966,20 @@ class Forge_CTA {
         );
 
         return $weights[$weight] ?? $weights['semibold'];
+    }
+
+    /**
+     * Get download icon SVG
+     */
+    private function get_download_icon($color) {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' . esc_attr($color) . '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
+    }
+
+    /**
+     * Get phone icon SVG
+     */
+    private function get_phone_icon($color) {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' . esc_attr($color) . '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ';
     }
 
     /**
