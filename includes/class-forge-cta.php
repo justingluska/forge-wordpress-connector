@@ -315,17 +315,25 @@ class Forge_CTA {
     private function render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss) {
         $html = '';
 
-        // Container styles
+        // Container styles with CSS isolation to prevent theme conflicts
         $containerStyles = array(
+            // CSS Reset for isolation
+            'all' => 'initial',
+            'display' => 'block',
+            'box-sizing' => 'border-box',
+            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            'font-size' => '16px',
+            'line-height' => '1.5',
+            // CTA-specific styles
             'background-color' => $style['background'],
             'color' => $style['text_color'],
             'border-radius' => $style['border_radius'] . 'px',
             'padding' => $paddingY . 'px ' . $paddingX . 'px',
-            'font-family' => 'inherit',
-            'box-sizing' => 'border-box',
             'width' => '100%',
+            'max-width' => '100%',
             'position' => 'relative',
             'overflow' => 'hidden',
+            'margin' => '1em 0',
         );
 
         if (!empty($style['border_width']) && $style['border_width'] > 0) {
@@ -338,6 +346,7 @@ class Forge_CTA {
 
         $html .= '<div class="forge-cta forge-cta-banner" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
+        $html .= 'data-cta-type="banner" ';
         $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
 
         // Default horizontal banner layout (no image)
@@ -480,12 +489,20 @@ class Forge_CTA {
     private function render_floating_bar_cta($id, $content, $style, $shadowCss) {
         $position = $style['position'] ?? 'bottom';
 
+        // Container styles with CSS isolation
         $containerStyles = array(
+            // CSS Reset for isolation
+            'all' => 'initial',
+            'box-sizing' => 'border-box',
+            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            'font-size' => '16px',
+            'line-height' => '1.5',
+            // Floating bar specific
             'position' => 'fixed',
             'left' => '0',
             'right' => '0',
             $position => '0',
-            'z-index' => '9999',
+            'z-index' => '999999',
             'background-color' => $style['background'],
             'color' => $style['text_color'],
             'padding' => '16px 24px',
@@ -502,6 +519,7 @@ class Forge_CTA {
 
         $html = '<div class="forge-cta forge-cta-floating-bar" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
+        $html .= 'data-cta-type="floating-bar" ';
         $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
 
         // Content
@@ -535,15 +553,23 @@ class Forge_CTA {
      * Render a popup CTA
      */
     private function render_popup_cta($id, $content, $style, $shadowCss) {
-        // Backdrop
-        $html = '<div class="forge-cta-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;" data-cta-backdrop></div>';
+        // Backdrop with high z-index
+        $html = '<div class="forge-cta-backdrop" style="all:initial;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999999;" data-cta-backdrop></div>';
 
+        // Container styles with CSS isolation
         $containerStyles = array(
+            // CSS Reset for isolation
+            'all' => 'initial',
+            'box-sizing' => 'border-box',
+            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            'font-size' => '16px',
+            'line-height' => '1.5',
+            // Popup specific
             'position' => 'fixed',
             'top' => '50%',
             'left' => '50%',
             'transform' => 'translate(-50%, -50%)',
-            'z-index' => '10000',
+            'z-index' => '1000000',
             'max-width' => '500px',
             'width' => '90%',
             'background-color' => $style['background'],
@@ -558,6 +584,7 @@ class Forge_CTA {
 
         $html .= '<div class="forge-cta forge-cta-popup" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
+        $html .= 'data-cta-type="popup" ';
         $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
 
         // Close button
