@@ -180,6 +180,16 @@ class Forge_Posts {
             );
         }
 
+        // Validate post type exists and is public
+        $post_type_obj = get_post_type_object($post_data['post_type']);
+        if (!$post_type_obj || !$post_type_obj->public) {
+            return new WP_Error(
+                'invalid_post_type',
+                sprintf(__('Post type "%s" does not exist or is not public.', 'forge-connector'), $post_data['post_type']),
+                array('status' => 400)
+            );
+        }
+
         // Insert the post
         $post_id = wp_insert_post($post_data, true);
 

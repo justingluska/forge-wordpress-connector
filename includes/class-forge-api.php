@@ -140,7 +140,42 @@ class Forge_API {
             return $result;
         }
 
+        // Set WordPress user context after HMAC auth succeeds
+        // Required for wp_insert_post() and plugins like ACF PRO that
+        // check current_user_can() during post creation hooks
+        $this->set_user_context();
+
         return true;
+    }
+
+    /**
+     * Set a WordPress user context for API operations
+     * Uses the first available administrator, falling back to any user with edit_posts
+     */
+    private function set_user_context() {
+        $admins = get_users(array(
+            'role' => 'administrator',
+            'orderby' => 'ID',
+            'order' => 'ASC',
+            'number' => 1,
+        ));
+
+        if (!empty($admins)) {
+            wp_set_current_user($admins[0]->ID);
+            return;
+        }
+
+        // Fallback: any user who can edit posts
+        $editors = get_users(array(
+            'capability' => 'edit_posts',
+            'orderby' => 'ID',
+            'order' => 'ASC',
+            'number' => 1,
+        ));
+
+        if (!empty($editors)) {
+            wp_set_current_user($editors[0]->ID);
+        }
     }
 
     /**
