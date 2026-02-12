@@ -129,8 +129,10 @@ class Forge_API {
     /**
      * Permission callback - validates HMAC signature
      * IMPORTANT: This runs BEFORE the callback handler
+     * Must be static because Forge_Posts and Forge_Media reference it as
+     * array('Forge_API', 'check_auth') - a static callback
      */
-    public function check_auth($request) {
+    public static function check_auth($request) {
         // Prevent caching of authenticated API responses - set early
         nocache_headers();
 
@@ -143,7 +145,7 @@ class Forge_API {
         // Set WordPress user context after HMAC auth succeeds
         // Required for wp_insert_post() and plugins like ACF PRO that
         // check current_user_can() during post creation hooks
-        $this->set_user_context();
+        self::set_user_context();
 
         return true;
     }
@@ -152,7 +154,7 @@ class Forge_API {
      * Set a WordPress user context for API operations
      * Uses the first available administrator, falling back to any user with edit_posts
      */
-    private function set_user_context() {
+    private static function set_user_context() {
         $admins = get_users(array(
             'role' => 'administrator',
             'orderby' => 'ID',
