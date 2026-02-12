@@ -93,7 +93,7 @@ class Forge_Posts {
      */
     public function get_posts($request) {
         $args = array(
-            'post_type' => $request->get_param('post_type'),
+            'post_type' => $this->normalize_post_type($request->get_param('post_type')),
             'post_status' => $request->get_param('status'),
             'posts_per_page' => min($request->get_param('per_page'), 100),
             'paged' => $request->get_param('page'),
@@ -150,13 +150,17 @@ class Forge_Posts {
     public function create_post($request) {
         $params = $request->get_json_params();
 
+        // Normalize post_type: REST API uses rest_base ('posts', 'pages')
+        // but wp_insert_post() expects the slug ('post', 'page')
+        $post_type = $this->normalize_post_type(sanitize_text_field($params['post_type'] ?? 'post'));
+
         // Build post data
         $post_data = array(
             'post_title' => sanitize_text_field($params['title'] ?? ''),
             'post_content' => wp_kses_post($params['content'] ?? ''),
             'post_excerpt' => sanitize_textarea_field($params['excerpt'] ?? ''),
             'post_status' => sanitize_text_field($params['status'] ?? 'draft'),
-            'post_type' => sanitize_text_field($params['post_type'] ?? 'post'),
+            'post_type' => $post_type,
             'post_author' => absint($params['author'] ?? get_current_user_id()),
         );
 
@@ -477,5 +481,17 @@ class Forge_Posts {
         }
 
         return $sizes;
+    }
+
+    /**
+     * Normalize REST API base to WordPress post_type slug.
+     *
+     * REST API uses rest_base ('posts', 'pages') in URLs,
+     * but wp_insert_post() and WP_Query expect the slug ('post', 'page').
+     * Custom post types typically have matching rest_base and slug.
+     */
+    private function normalize_post_type($post_type) {
+        $rest_base_map = array('posts' => 'post', 'pages' => 'page');
+        return isset($rest_base_map[$post_type]) ? $rest_base_map[$post_type] : $post_type;
     }
 }
