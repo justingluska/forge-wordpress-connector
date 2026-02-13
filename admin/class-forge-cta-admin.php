@@ -286,7 +286,7 @@ class Forge_CTA_Admin {
      */
     private function fetch_all_ctas($settings) {
         $response = wp_remote_get(
-            $this->api_url . '/ctas/wordpress',
+            $this->api_url . '/ctas/wordpress/all',
             array(
                 'headers' => array(
                     'X-Forge-Site-Id' => $settings['forge_site_id'],
@@ -308,36 +308,8 @@ class Forge_CTA_Admin {
             return new WP_Error('api_error', $data['error'] ?? "API returned status {$code}");
         }
 
-        // Also fetch inline CTAs (not just site-wide)
-        $inline_response = wp_remote_get(
-            $this->api_url . '/ctas',
-            array(
-                'headers' => array(
-                    'X-Forge-Site-Id' => $settings['forge_site_id'],
-                    'X-Forge-Connection-Key' => $settings['connection_key'],
-                ),
-                'timeout' => 15,
-            )
-        );
-
-        // Try the slug endpoint for a known CTA as fallback
-        if (is_wp_error($inline_response) || wp_remote_retrieve_response_code($inline_response) !== 200) {
-            // Just return site-wide CTAs
-            return $data['ctas'] ?? array();
-        }
-
-        $inline_data = json_decode(wp_remote_retrieve_body($inline_response), true);
-
-        // Merge and dedupe
-        $all_ctas = array_merge($data['ctas'] ?? array(), $inline_data['data'] ?? $inline_data ?? array());
-
-        // Dedupe by ID
-        $unique = array();
-        foreach ($all_ctas as $cta) {
-            $unique[$cta['id']] = $cta;
-        }
-
-        return array_values($unique);
+        // Return all CTAs (endpoint now returns both inline and site-wide)
+        return $data['ctas'] ?? array();
     }
 
     /**
