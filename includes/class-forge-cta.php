@@ -146,7 +146,7 @@ class Forge_CTA {
         }
 
         // Output the loaded CTAs data for JavaScript
-        echo '<script>window.forgeCTAsLoaded = ' . json_encode(array_values($this->ctas_loaded)) . ';</script>';
+        echo '<script>window.forgeCTAsLoaded = ' . wp_json_encode(array_values($this->ctas_loaded)) . ';</script>';
     }
 
     /**
@@ -226,12 +226,265 @@ class Forge_CTA {
     }
 
     /**
+     * Generate scoped CSS for a CTA
+     *
+     * Returns a CSS string with all selectors scoped under #forge-cta-{id}.
+     * This replaces inline styles with semantic class-based styling.
+     */
+    private function generate_cta_css($cta) {
+        $id = $cta['id'];
+        $content = $cta['content'] ?? array();
+        $style = $cta['style'] ?? array();
+        $type = $cta['type'] ?? 'banner';
+
+        // Apply default content values
+        $content = array_merge(array(
+            'image_position' => 'top',
+            'image_scale' => 100,
+            'image_fit' => 'cover',
+            'show_phone_icon' => true,
+            'button_style' => 'solid',
+            'secondary_button_style' => 'outline',
+        ), $content);
+
+        // Apply default style values
+        $style = array_merge(array(
+            'background' => '#ffffff',
+            'text_color' => '#374151',
+            'headline_color' => '#111827',
+            'headline_size' => 'lg',
+            'headline_weight' => 'semibold',
+            'text_size' => 'sm',
+            'text_align' => 'left',
+            'button_bg' => '#2563eb',
+            'button_text_color' => '#ffffff',
+            'button_hover_bg' => '#1d4ed8',
+            'button_radius' => 6,
+            'button_border_color' => '',
+            'secondary_button_bg' => 'transparent',
+            'secondary_button_text_color' => '#2563eb',
+            'secondary_button_border_color' => '#2563eb',
+            'border_color' => '#e5e7eb',
+            'border_width' => 0,
+            'border_radius' => 8,
+            'padding' => 24,
+            'padding_x' => null,
+            'padding_y' => null,
+            'gap' => 12,
+            'shadow' => 'md',
+            'shadow_offset_x' => 0,
+            'shadow_offset_y' => 4,
+            'shadow_blur' => 12,
+            'shadow_color' => 'rgba(0, 0, 0, 0.15)',
+            'layout' => 'horizontal',
+            'animation' => 'none',
+            'custom_css' => '',
+            'bg_pattern' => 'none',
+            'bg_pattern_opacity' => 10,
+            'bg_pattern_color' => '#000000',
+            'position' => 'bottom',
+        ), $style);
+
+        $s = '#forge-cta-' . esc_attr($id);
+        $shadowCss = $this->get_shadow_style($style);
+        $animationCss = $this->get_animation_style($style['animation']);
+        $paddingY = $style['padding_y'] ?? $style['padding'];
+        $paddingX = $style['padding_x'] ?? $style['padding'];
+        $isHorizontal = $style['layout'] === 'horizontal';
+        $headlineSize = $this->get_font_size($style['headline_size']);
+        $headlineWeight = $this->get_font_weight($style['headline_weight']);
+        $textSize = $this->get_font_size($style['text_size']);
+        $buttonRadius = ($style['button_radius'] ?? $style['border_radius'] ?? 6) . 'px';
+        $gap = ($style['gap'] ?? 12) . 'px';
+
+        // Button color calculations
+        $primaryBg = $style['button_bg'];
+        $primaryText = $style['button_text_color'];
+        $primaryBorder = $style['button_border_color'] ?: $style['button_bg'];
+        $secondaryBg = $style['secondary_button_bg'];
+        $secondaryText = $style['secondary_button_text_color'];
+        $secondaryBorder = $style['secondary_button_border_color'];
+
+        $effectivePrimaryStyle = ($content['button_style'] ?? 'solid') ?: 'solid';
+        $effectiveSecondaryStyle = ($content['secondary_button_style'] ?? 'outline') ?: 'outline';
+
+        $imgFit = $content['image_fit'] ?? 'cover';
+        $imgScale = (!empty($content['image_scale']) && $content['image_scale'] != 100)
+            ? "transform:scale(" . ($content['image_scale'] / 100) . ");" : '';
+
+        $css = '';
+
+        // --- CSS RESET on scoped container ---
+        $css .= "{$s}{";
+        $css .= "all:initial;display:block;box-sizing:border-box;";
+        $css .= "font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;";
+        $css .= "font-size:16px;line-height:1.5;";
+        $css .= "background-color:{$style['background']};color:{$style['text_color']};";
+
+        if ($type === 'banner') {
+            $css .= "border-radius:{$style['border_radius']}px;";
+            $css .= "padding:{$paddingY}px {$paddingX}px;";
+            $css .= "width:100%;max-width:100%;position:relative;overflow:hidden;margin:1em 0;";
+            if (!empty($style['border_width']) && $style['border_width'] > 0) {
+                $css .= "border:{$style['border_width']}px solid {$style['border_color']};";
+            }
+        } elseif ($type === 'floating-bar') {
+            $position = $style['position'];
+            $css .= "position:fixed;left:0;right:0;{$position}:0;z-index:999999;";
+            $css .= "padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;";
+        } elseif ($type === 'popup') {
+            $css .= "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000000;";
+            $css .= "max-width:500px;width:90%;";
+            $css .= "border-radius:{$style['border_radius']}px;";
+            $css .= "padding:{$style['padding']}px;";
+        }
+
+        if ($shadowCss) {
+            $css .= "box-shadow:{$shadowCss};";
+        }
+        if ($animationCss) {
+            $css .= "animation:{$animationCss};";
+        }
+        $css .= "}\n";
+
+        // Ensure box-sizing for all children
+        $css .= "{$s} *,{$s} *::before,{$s} *::after{box-sizing:border-box;}\n";
+
+        // --- Pattern overlay ---
+        $patternStyles = $this->get_background_pattern($style);
+        $css .= "{$s} .forge-cta-pattern{position:absolute;inset:0;pointer-events:none;";
+        if (!empty($patternStyles['background-image'])) {
+            $css .= "background-image:{$patternStyles['background-image']};";
+        }
+        if (!empty($patternStyles['background-size'])) {
+            $css .= "background-size:{$patternStyles['background-size']};";
+        }
+        $css .= "}\n";
+
+        // --- Background image ---
+        $css .= "{$s} .forge-cta-bg-image{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:{$imgFit};z-index:0;{$imgScale}}\n";
+        $css .= "{$s} .forge-cta-bg-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:1;}\n";
+
+        // --- Wrapper ---
+        $css .= "{$s} .forge-cta-wrapper{position:relative;z-index:10;}\n";
+
+        // --- Image (top) ---
+        $css .= "{$s} .forge-cta-image-top{display:block;width:100%;max-height:200px;border-radius:8px;object-fit:{$imgFit};{$imgScale}}\n";
+        $css .= "{$s} .forge-cta-below-image{margin-top:16px;}\n";
+
+        // --- Image (side: left/right) ---
+        $css .= "{$s} .forge-cta-image-side{display:block;width:128px;height:128px;border-radius:8px;flex-shrink:0;object-fit:{$imgFit};{$imgScale}}\n";
+
+        // --- Side image flex wrapper ---
+        $css .= "{$s} .forge-cta-side-layout{display:flex;gap:24px;align-items:center;position:relative;z-index:10;}\n";
+        $css .= "{$s} .forge-cta-side-layout--reverse{flex-direction:row-reverse;}\n";
+        $css .= "{$s} .forge-cta-side-content{flex:1;}\n";
+
+        // --- Content wrapper (flex container for text + buttons) ---
+        $css .= "{$s} .forge-cta-content-wrapper{display:flex;gap:{$gap};";
+        if ($isHorizontal) {
+            $css .= "align-items:center;justify-content:space-between;flex-wrap:wrap;";
+        } else {
+            $css .= "flex-direction:column;text-align:center;align-items:center;";
+        }
+        $css .= "}\n";
+
+        // --- Content (text side) ---
+        if (!$isHorizontal) {
+            $css .= "{$s} .forge-cta-content{text-align:center;}\n";
+        }
+
+        // --- Eyebrow ---
+        $css .= "{$s} .forge-cta-eyebrow{display:block;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;opacity:0.7;margin-bottom:4px;}\n";
+
+        // --- Headline ---
+        $css .= "{$s} .forge-cta-headline{color:{$style['headline_color']};margin:0;font-size:{$headlineSize};font-weight:{$headlineWeight};line-height:1.3;}\n";
+
+        // --- Text ---
+        $css .= "{$s} .forge-cta-text{margin:4px 0 0 0;font-size:{$textSize};opacity:0.9;color:{$style['text_color']};}\n";
+
+        // --- Buttons container ---
+        $css .= "{$s} .forge-cta-buttons{display:flex;gap:{$gap};align-items:center;flex-shrink:0;";
+        if (!$isHorizontal) {
+            $css .= "flex-direction:column;width:100%;margin-top:16px;";
+        }
+        $css .= "}\n";
+
+        // --- Phone link ---
+        $css .= "{$s} .forge-cta-phone{display:flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap;color:{$style['button_bg']};text-decoration:none;}\n";
+
+        // --- Common button base ---
+        $css .= "{$s} .forge-cta-button{display:inline-flex;align-items:center;gap:8px;font-weight:500;text-decoration:none;white-space:nowrap;cursor:pointer;";
+        $css .= "border-radius:{$buttonRadius};padding:10px 20px;font-size:14px;line-height:1.5;text-align:center;transition:all 0.2s ease;font-family:inherit;}\n";
+
+        // --- Primary button ---
+        $css .= "{$s} .forge-cta-button-primary{";
+        if ($effectivePrimaryStyle === 'solid') {
+            $css .= "background-color:{$primaryBg};color:{$primaryText};border:2px solid {$primaryBorder};";
+        } elseif ($effectivePrimaryStyle === 'outline') {
+            $css .= "background-color:transparent;color:{$primaryBorder};border:2px solid {$primaryBorder};";
+        } else {
+            $css .= "background-color:transparent;color:{$primaryBorder};border:none;";
+        }
+        $css .= "}\n";
+
+        // --- Secondary button ---
+        $css .= "{$s} .forge-cta-button-secondary{";
+        if ($effectiveSecondaryStyle === 'solid') {
+            $css .= "background-color:{$secondaryBg};color:{$secondaryText};border:2px solid {$secondaryBorder};";
+        } elseif ($effectiveSecondaryStyle === 'outline') {
+            $css .= "background-color:transparent;color:{$secondaryBorder};border:2px solid {$secondaryBorder};";
+        } else {
+            $css .= "background-color:transparent;color:{$secondaryBorder};border:none;";
+        }
+        $css .= "}\n";
+
+        // --- Fine print ---
+        $css .= "{$s} .forge-cta-fine-print{font-size:10px;opacity:0.5;margin:12px 0 0 0;position:relative;z-index:10;}\n";
+
+        // --- Close button ---
+        $css .= "{$s} .forge-cta-close{background:none;border:none;cursor:pointer;color:{$style['text_color']};opacity:0.5;}\n";
+
+        // --- Floating bar specific ---
+        if ($type === 'floating-bar') {
+            $css .= "{$s} .forge-cta-bar-content{text-align:center;}\n";
+            $css .= "{$s} .forge-cta-bar-headline{font-weight:bold;color:{$style['headline_color']};}\n";
+            $css .= "{$s} .forge-cta-bar-text{margin-left:8px;opacity:0.9;}\n";
+            $css .= "{$s} .forge-cta-close{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:20px;}\n";
+        }
+
+        // --- Popup specific ---
+        if ($type === 'popup') {
+            $popupHeadlineSize = $this->get_font_size($style['headline_size'] === 'lg' ? 'xl' : $style['headline_size']);
+            $css .= "{$s} .forge-cta-close{position:absolute;top:12px;right:12px;font-size:24px;}\n";
+            $css .= "{$s} .forge-cta-popup-content{text-align:center;}\n";
+            $css .= "{$s} .forge-cta-popup-headline{color:{$style['headline_color']};margin:0 0 8px;font-size:{$popupHeadlineSize};font-weight:600;line-height:1.3;}\n";
+            $css .= "{$s} .forge-cta-popup-text{margin:0 0 16px;opacity:0.9;}\n";
+            $css .= "{$s} .forge-cta-popup-buttons{display:flex;flex-direction:column;gap:12px;align-items:center;}\n";
+        }
+
+        // --- Backdrop (popup only, scoped by CTA-specific class) ---
+        if ($type === 'popup') {
+            $css .= ".forge-cta-backdrop-" . esc_attr($id) . "{all:initial;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999999;}\n";
+        }
+
+        // --- Custom CSS (sanitized to prevent XSS via </style> injection) ---
+        if (!empty($style['custom_css'])) {
+            $custom = wp_strip_all_tags($style['custom_css']);
+            $custom = str_replace('<', '', $custom);
+            $css .= "{$s}{" . $custom . "}\n";
+        }
+
+        return $css;
+    }
+
+    /**
      * Render a CTA to HTML
      *
      * This function mirrors the React rendering in forge-ui/src/pages/cta-editor.tsx
      * to ensure CTAs look identical in WordPress and Forge preview.
      */
-    private function render_cta($cta) {
+    public function render_cta($cta) {
         $id = $cta['id'];
         $type = $cta['type'] ?? 'banner';
         $content = $cta['content'] ?? array();
@@ -300,35 +553,23 @@ class Forge_CTA {
             'bg_pattern_color' => '#000000',
         ), $style);
 
-        // Build shadow CSS
-        $shadowCss = $this->get_shadow_style($style);
-
         // Determine layout
         $isHorizontal = ($style['layout'] ?? 'horizontal') === 'horizontal';
         $hasImage = !empty($content['image_url']);
         $imagePosition = $content['image_position'] ?? 'top';
 
-        // Get padding values
-        $paddingY = $style['padding_y'] ?? $style['padding'];
-        $paddingX = $style['padding_x'] ?? $style['padding'];
-
-        // Get animation class
-        $animationCss = $this->get_animation_style($style['animation'] ?? 'none');
+        // Generate scoped CSS
+        $css = $this->generate_cta_css($cta);
 
         // Render based on type
-        $html = '';
+        $html = '<style>' . $css . '</style>';
 
         if ($type === 'banner') {
-            $html = $this->render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss, $animationCss);
+            $html .= $this->render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition);
         } elseif ($type === 'floating-bar') {
-            $html = $this->render_floating_bar_cta($id, $content, $style, $shadowCss, $animationCss);
+            $html .= $this->render_floating_bar_cta($id, $content, $style);
         } elseif ($type === 'popup') {
-            $html = $this->render_popup_cta($id, $content, $style, $shadowCss, $animationCss);
-        }
-
-        // Apply custom CSS if provided
-        if (!empty($style['custom_css'])) {
-            $html .= '<style>.forge-cta[data-cta-id="' . esc_attr($id) . '"] { ' . esc_html($style['custom_css']) . ' }</style>';
+            $html .= $this->render_popup_cta($id, $content, $style);
         }
 
         return $html;
@@ -337,112 +578,54 @@ class Forge_CTA {
     /**
      * Render a banner (inline) CTA
      */
-    private function render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition, $paddingX, $paddingY, $shadowCss, $animationCss) {
+    private function render_banner_cta($id, $content, $style, $isHorizontal, $hasImage, $imagePosition) {
         $html = '';
 
-        // Base container styles with CSS isolation
-        $containerStyles = array(
-            'all' => 'initial',
-            'display' => 'block',
-            'box-sizing' => 'border-box',
-            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'font-size' => '16px',
-            'line-height' => '1.5',
-            'background-color' => $style['background'],
-            'color' => $style['text_color'],
-            'border-radius' => $style['border_radius'] . 'px',
-            'padding' => $paddingY . 'px ' . $paddingX . 'px',
-            'width' => '100%',
-            'max-width' => '100%',
-            'position' => 'relative',
-            'overflow' => 'hidden',
-            'margin' => '1em 0',
-        );
-
-        if (!empty($style['border_width']) && $style['border_width'] > 0) {
-            $containerStyles['border'] = $style['border_width'] . 'px solid ' . $style['border_color'];
-        }
-
-        if ($shadowCss) {
-            $containerStyles['box-shadow'] = $shadowCss;
-        }
-
-        if ($animationCss) {
-            $containerStyles['animation'] = $animationCss;
-        }
-
-        // Background pattern
-        $patternStyles = $this->get_background_pattern($style);
-
-        $html .= '<div class="forge-cta forge-cta-banner" ';
+        $html .= '<div id="forge-cta-' . esc_attr($id) . '" class="forge-cta forge-cta-banner" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
-        $html .= 'data-cta-type="banner" ';
-        $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
+        $html .= 'data-cta-type="banner">';
 
         // Pattern overlay
-        if (!empty($patternStyles)) {
-            $html .= '<div style="position:absolute;inset:0;pointer-events:none;' . $this->build_style_string($patternStyles) . '"></div>';
+        if (($style['bg_pattern'] ?? 'none') !== 'none') {
+            $html .= '<div class="forge-cta-pattern"></div>';
         }
 
         // Image as background
         if ($hasImage && $imagePosition === 'background') {
-            $imgStyles = array(
-                'position' => 'absolute',
-                'top' => '0',
-                'left' => '0',
-                'width' => '100%',
-                'height' => '100%',
-                'object-fit' => $content['image_fit'] ?? 'cover',
-                'z-index' => '0',
-            );
-            if (!empty($content['image_scale']) && $content['image_scale'] != 100) {
-                $imgStyles['transform'] = 'scale(' . ($content['image_scale'] / 100) . ')';
-            }
-            $html .= '<img src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" style="' . $this->build_style_string($imgStyles) . '" />';
-
-            // Overlay for readability
-            $html .= '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:1;"></div>';
+            $html .= '<img class="forge-cta-bg-image" src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" />';
+            $html .= '<div class="forge-cta-bg-overlay"></div>';
         }
-
-        // Main content wrapper
-        $wrapperStyles = array(
-            'position' => 'relative',
-            'z-index' => '10',
-        );
 
         // Determine layout based on image position
         if ($hasImage && $imagePosition === 'top') {
-            // Image on top - stacked layout
-            $html .= '<div style="' . $this->build_style_string($wrapperStyles) . '">';
+            $html .= '<div class="forge-cta-wrapper">';
             $html .= $this->render_image($content, 'top');
-            $html .= '<div style="margin-top:16px;">';
+            $html .= '<div class="forge-cta-below-image">';
             $html .= $this->render_banner_content($content, $style, false);
             $html .= '</div>';
             $html .= '</div>';
         } elseif ($hasImage && ($imagePosition === 'left' || $imagePosition === 'right')) {
-            // Image on side - flex layout
-            $flexDir = $imagePosition === 'right' ? 'row-reverse' : 'row';
-            $html .= '<div style="display:flex;gap:24px;align-items:center;flex-direction:' . $flexDir . ';' . $this->build_style_string($wrapperStyles) . '">';
+            $reverseClass = $imagePosition === 'right' ? ' forge-cta-side-layout--reverse' : '';
+            $html .= '<div class="forge-cta-side-layout' . $reverseClass . '">';
             $html .= $this->render_image($content, $imagePosition);
-            $html .= '<div style="flex:1;">';
+            $html .= '<div class="forge-cta-side-content">';
             $html .= $this->render_banner_content($content, $style, $isHorizontal);
             $html .= '</div>';
             $html .= '</div>';
         } else {
-            // No image or background image - standard layout
-            $html .= '<div style="' . $this->build_style_string($wrapperStyles) . '">';
+            $html .= '<div class="forge-cta-wrapper">';
             $html .= $this->render_banner_content($content, $style, $isHorizontal);
             $html .= '</div>';
         }
 
         // Fine print
         if (!empty($content['fine_print'])) {
-            $html .= '<p style="font-size:10px;opacity:0.5;margin:12px 0 0 0;position:relative;z-index:10;">';
+            $html .= '<p class="forge-cta-fine-print">';
             $html .= esc_html($content['fine_print']);
             $html .= '</p>';
         }
 
-        $html .= '</div>'; // End container
+        $html .= '</div>';
 
         return $html;
     }
@@ -453,27 +636,9 @@ class Forge_CTA {
     private function render_image($content, $position) {
         if (empty($content['image_url'])) return '';
 
-        $imgStyles = array(
-            'display' => 'block',
-            'object-fit' => $content['image_fit'] ?? 'cover',
-        );
+        $class = ($position === 'top') ? 'forge-cta-image-top' : 'forge-cta-image-side';
 
-        if ($position === 'top') {
-            $imgStyles['width'] = '100%';
-            $imgStyles['max-height'] = '200px';
-            $imgStyles['border-radius'] = '8px';
-        } elseif ($position === 'left' || $position === 'right') {
-            $imgStyles['width'] = '128px';
-            $imgStyles['height'] = '128px';
-            $imgStyles['border-radius'] = '8px';
-            $imgStyles['flex-shrink'] = '0';
-        }
-
-        if (!empty($content['image_scale']) && $content['image_scale'] != 100) {
-            $imgStyles['transform'] = 'scale(' . ($content['image_scale'] / 100) . ')';
-        }
-
-        return '<img src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" style="' . $this->build_style_string($imgStyles) . '" />';
+        return '<img class="' . $class . '" src="' . esc_url($content['image_url']) . '" alt="' . esc_attr($content['image_alt']) . '" />';
     }
 
     /**
@@ -482,94 +647,40 @@ class Forge_CTA {
     private function render_banner_content($content, $style, $isHorizontal) {
         $html = '';
 
-        $flexStyles = array(
-            'display' => 'flex',
-            'gap' => ($style['gap'] ?? 16) . 'px',
-        );
-
-        if ($isHorizontal) {
-            $flexStyles['align-items'] = 'center';
-            $flexStyles['justify-content'] = 'space-between';
-            $flexStyles['flex-wrap'] = 'wrap';
-        } else {
-            $flexStyles['flex-direction'] = 'column';
-            $flexStyles['text-align'] = 'center';
-            $flexStyles['align-items'] = 'center';
-        }
-
-        $html .= '<div style="' . $this->build_style_string($flexStyles) . '">';
+        $html .= '<div class="forge-cta-content-wrapper">';
 
         // Content side (headline + text)
-        $contentAlign = $isHorizontal ? '' : 'text-align:center;';
-        $html .= '<div style="' . $contentAlign . '">';
+        $html .= '<div class="forge-cta-content">';
 
         // Eyebrow
         if (!empty($content['eyebrow_text'])) {
-            $html .= '<span style="display:block;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;opacity:0.7;margin-bottom:4px;">';
+            $html .= '<span class="forge-cta-eyebrow">';
             $html .= esc_html($content['eyebrow_text']);
             $html .= '</span>';
         }
 
         // Headline
         if (!empty($content['headline'])) {
-            $headlineSize = $this->get_font_size($style['headline_size'] ?? 'lg');
-            $headlineWeight = $this->get_font_weight($style['headline_weight'] ?? 'semibold');
-            $headlineStyles = array(
-                'color' => $style['headline_color'] ?? $style['text_color'],
-                'margin' => '0',
-                'font-size' => $headlineSize,
-                'font-weight' => $headlineWeight,
-                'line-height' => '1.3',
-            );
-            $html .= '<h3 style="' . $this->build_style_string($headlineStyles) . '">';
+            $html .= '<h3 class="forge-cta-headline">';
             $html .= esc_html($content['headline']);
             $html .= '</h3>';
         }
 
         // Text
         if (!empty($content['text'])) {
-            $textSize = $this->get_font_size($style['text_size'] ?? 'sm');
-            $textStyles = array(
-                'margin' => '4px 0 0 0',
-                'font-size' => $textSize,
-                'opacity' => '0.9',
-                'color' => $style['text_color'],
-            );
-            $html .= '<p style="' . $this->build_style_string($textStyles) . '">';
+            $html .= '<p class="forge-cta-text">';
             $html .= esc_html($content['text']);
             $html .= '</p>';
         }
 
-        $html .= '</div>'; // End content side
+        $html .= '</div>';
 
         // Buttons side
-        $buttonContainerStyles = array(
-            'display' => 'flex',
-            'gap' => ($style['gap'] ?? 12) . 'px',
-            'align-items' => 'center',
-            'flex-shrink' => '0',
-        );
-
-        if (!$isHorizontal) {
-            $buttonContainerStyles['flex-direction'] = 'column';
-            $buttonContainerStyles['width'] = '100%';
-            $buttonContainerStyles['margin-top'] = '16px';
-        }
-
-        $html .= '<div style="' . $this->build_style_string($buttonContainerStyles) . '">';
+        $html .= '<div class="forge-cta-buttons">';
 
         // Phone number
         if (!empty($content['phone'])) {
-            $phoneStyles = array(
-                'display' => 'flex',
-                'align-items' => 'center',
-                'gap' => '8px',
-                'font-weight' => '500',
-                'white-space' => 'nowrap',
-                'color' => $style['button_bg'],
-                'text-decoration' => 'none',
-            );
-            $html .= '<a href="tel:' . esc_attr(preg_replace('/\D/', '', $content['phone'])) . '" style="' . $this->build_style_string($phoneStyles) . '">';
+            $html .= '<a class="forge-cta-phone" href="tel:' . esc_attr(preg_replace('/\D/', '', $content['phone'])) . '">';
             if (!empty($content['show_phone_icon'])) {
                 $html .= $this->get_phone_icon($style['button_bg']);
             }
@@ -583,7 +694,6 @@ class Forge_CTA {
                 $content['button_text'],
                 $content['button_url'],
                 true,
-                $content['button_style'] ?? 'solid',
                 $style,
                 !empty($content['is_lead_magnet'])
             );
@@ -595,14 +705,13 @@ class Forge_CTA {
                 $content['secondary_button_text'],
                 $content['secondary_button_url'],
                 false,
-                $content['secondary_button_style'] ?? 'outline',
                 $style,
                 false
             );
         }
 
-        $html .= '</div>'; // End buttons side
-        $html .= '</div>'; // End flex container
+        $html .= '</div>';
+        $html .= '</div>';
 
         return $html;
     }
@@ -610,63 +719,31 @@ class Forge_CTA {
     /**
      * Render a floating bar CTA
      */
-    private function render_floating_bar_cta($id, $content, $style, $shadowCss, $animationCss) {
-        $position = $style['position'] ?? 'bottom';
-
-        $containerStyles = array(
-            'all' => 'initial',
-            'box-sizing' => 'border-box',
-            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'font-size' => '16px',
-            'line-height' => '1.5',
-            'position' => 'fixed',
-            'left' => '0',
-            'right' => '0',
-            $position => '0',
-            'z-index' => '999999',
-            'background-color' => $style['background'],
-            'color' => $style['text_color'],
-            'padding' => '16px 24px',
-            'display' => 'flex',
-            'align-items' => 'center',
-            'justify-content' => 'center',
-            'gap' => '16px',
-            'flex-wrap' => 'wrap',
-        );
-
-        if ($shadowCss) {
-            $containerStyles['box-shadow'] = $shadowCss;
-        }
-
-        if ($animationCss) {
-            $containerStyles['animation'] = $animationCss;
-        }
-
-        $html = '<div class="forge-cta forge-cta-floating-bar" ';
+    private function render_floating_bar_cta($id, $content, $style) {
+        $html = '<div id="forge-cta-' . esc_attr($id) . '" class="forge-cta forge-cta-floating-bar" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
-        $html .= 'data-cta-type="floating-bar" ';
-        $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
+        $html .= 'data-cta-type="floating-bar">';
 
         // Content
         if (!empty($content['headline']) || !empty($content['text'])) {
-            $html .= '<div style="text-align:center;">';
+            $html .= '<div class="forge-cta-bar-content">';
             if (!empty($content['headline'])) {
-                $html .= '<strong style="color:' . esc_attr($style['headline_color']) . ';">' . esc_html($content['headline']) . '</strong>';
+                $html .= '<strong class="forge-cta-bar-headline">' . esc_html($content['headline']) . '</strong>';
             }
             if (!empty($content['text'])) {
-                $html .= '<span style="margin-left:8px;opacity:0.9;">' . esc_html($content['text']) . '</span>';
+                $html .= '<span class="forge-cta-bar-text">' . esc_html($content['text']) . '</span>';
             }
             $html .= '</div>';
         }
 
         // Button
         if (!empty($content['button_text'])) {
-            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style, !empty($content['is_lead_magnet']));
+            $html .= $this->render_button($content['button_text'], $content['button_url'], true, $style, !empty($content['is_lead_magnet']));
         }
 
         // Close button
         if (!empty($content['show_close_button'])) {
-            $html .= '<button class="forge-cta-close" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;cursor:pointer;color:' . esc_attr($style['text_color']) . ';opacity:0.5;" data-cta-close>&times;</button>';
+            $html .= '<button class="forge-cta-close" data-cta-close>&times;</button>';
         }
 
         $html .= '</div>';
@@ -677,129 +754,60 @@ class Forge_CTA {
     /**
      * Render a popup CTA
      */
-    private function render_popup_cta($id, $content, $style, $shadowCss, $animationCss) {
+    private function render_popup_cta($id, $content, $style) {
         // Backdrop
-        $html = '<div class="forge-cta-backdrop" style="all:initial;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999999;" data-cta-backdrop></div>';
+        $html = '<div class="forge-cta-backdrop-' . esc_attr($id) . '" data-cta-backdrop></div>';
 
-        $containerStyles = array(
-            'all' => 'initial',
-            'box-sizing' => 'border-box',
-            'font-family' => '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            'font-size' => '16px',
-            'line-height' => '1.5',
-            'position' => 'fixed',
-            'top' => '50%',
-            'left' => '50%',
-            'transform' => 'translate(-50%, -50%)',
-            'z-index' => '1000000',
-            'max-width' => '500px',
-            'width' => '90%',
-            'background-color' => $style['background'],
-            'color' => $style['text_color'],
-            'border-radius' => $style['border_radius'] . 'px',
-            'padding' => ($style['padding'] ?? 24) . 'px',
-        );
-
-        if ($shadowCss) {
-            $containerStyles['box-shadow'] = $shadowCss;
-        }
-
-        if ($animationCss) {
-            $containerStyles['animation'] = $animationCss;
-        }
-
-        $html .= '<div class="forge-cta forge-cta-popup" ';
+        $html .= '<div id="forge-cta-' . esc_attr($id) . '" class="forge-cta forge-cta-popup" ';
         $html .= 'data-cta-id="' . esc_attr($id) . '" ';
-        $html .= 'data-cta-type="popup" ';
-        $html .= 'style="' . $this->build_style_string($containerStyles) . '">';
+        $html .= 'data-cta-type="popup">';
 
         // Close button
-        $html .= '<button class="forge-cta-close" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:24px;cursor:pointer;color:' . esc_attr($style['text_color']) . ';opacity:0.5;" data-cta-close>&times;</button>';
+        $html .= '<button class="forge-cta-close" data-cta-close>&times;</button>';
 
         // Content
-        $html .= '<div style="text-align:center;">';
+        $html .= '<div class="forge-cta-popup-content">';
 
         if (!empty($content['headline'])) {
-            $headlineSize = $this->get_font_size($style['headline_size'] ?? 'xl');
-            $html .= '<h3 style="color:' . esc_attr($style['headline_color']) . ';margin:0 0 8px;font-size:' . $headlineSize . ';font-weight:600;">' . esc_html($content['headline']) . '</h3>';
+            $html .= '<h3 class="forge-cta-popup-headline">' . esc_html($content['headline']) . '</h3>';
         }
 
         if (!empty($content['text'])) {
-            $html .= '<p style="margin:0 0 16px;opacity:0.9;">' . esc_html($content['text']) . '</p>';
+            $html .= '<p class="forge-cta-popup-text">' . esc_html($content['text']) . '</p>';
         }
 
         // Buttons
-        $html .= '<div style="display:flex;flex-direction:column;gap:12px;align-items:center;">';
+        $html .= '<div class="forge-cta-popup-buttons">';
         if (!empty($content['button_text'])) {
-            $html .= $this->render_button($content['button_text'], $content['button_url'], true, 'solid', $style, !empty($content['is_lead_magnet']));
+            $html .= $this->render_button($content['button_text'], $content['button_url'], true, $style, !empty($content['is_lead_magnet']));
         }
         if (!empty($content['secondary_button_text'])) {
-            $html .= $this->render_button($content['secondary_button_text'], $content['secondary_button_url'], false, 'outline', $style, false);
+            $html .= $this->render_button($content['secondary_button_text'], $content['secondary_button_url'], false, $style, false);
         }
         $html .= '</div>';
 
-        $html .= '</div>'; // End content
-        $html .= '</div>'; // End container
+        $html .= '</div>';
+        $html .= '</div>';
 
         return $html;
     }
 
     /**
      * Render a button element
-     * Matches the renderButton function in Forge's cta-editor.tsx
+     * Uses semantic classes styled by generate_cta_css()
      */
-    private function render_button($text, $url, $isPrimary, $buttonStyle, $style, $showDownloadIcon = false) {
+    private function render_button($text, $url, $isPrimary, $style, $showDownloadIcon = false) {
         if (empty($text)) return '';
 
-        // Get colors based on primary/secondary
-        $bg = $isPrimary ? $style['button_bg'] : ($style['secondary_button_bg'] ?? 'transparent');
-        $textColor = $isPrimary ? $style['button_text_color'] : ($style['secondary_button_text_color'] ?? $style['button_bg']);
-        $borderColor = $isPrimary
-            ? ($style['button_border_color'] ?: $style['button_bg'])
-            : ($style['secondary_button_border_color'] ?? $style['button_bg']);
-
-        // Determine effective style
-        $effectiveStyle = $buttonStyle ?: ($isPrimary ? 'solid' : 'outline');
-
-        // Build button styles based on style type
-        $buttonStyles = array(
-            'display' => 'inline-flex',
-            'align-items' => 'center',
-            'gap' => '8px',
-            'font-weight' => '500',
-            'text-decoration' => 'none',
-            'white-space' => 'nowrap',
-            'cursor' => 'pointer',
-            'border-radius' => ($style['button_radius'] ?? $style['border_radius'] ?? 6) . 'px',
-            'padding' => '10px 20px',
-            'font-size' => '14px',
-            'line-height' => '1.5',
-            'text-align' => 'center',
-            'transition' => 'all 0.2s ease',
-            'font-family' => 'inherit',
-        );
-
-        if ($effectiveStyle === 'solid') {
-            $buttonStyles['background-color'] = $bg;
-            $buttonStyles['color'] = $textColor;
-            $buttonStyles['border'] = '2px solid ' . $borderColor;
-        } elseif ($effectiveStyle === 'outline') {
-            $buttonStyles['background-color'] = 'transparent';
-            $buttonStyles['color'] = $borderColor;
-            $buttonStyles['border'] = '2px solid ' . $borderColor;
-        } else { // ghost
-            $buttonStyles['background-color'] = 'transparent';
-            $buttonStyles['color'] = $borderColor;
-            $buttonStyles['border'] = 'none';
-        }
+        $class = 'forge-cta-button forge-cta-button-' . ($isPrimary ? 'primary' : 'secondary');
 
         $html = '<a href="' . esc_url($url) . '" ';
-        $html .= 'class="forge-cta-button forge-cta-button-' . ($isPrimary ? 'primary' : 'secondary') . '" ';
-        $html .= 'data-cta-button="' . ($isPrimary ? 'primary' : 'secondary') . '" ';
-        $html .= 'style="' . $this->build_style_string($buttonStyles) . '">';
+        $html .= 'class="' . $class . '" ';
+        $html .= 'data-cta-button="' . ($isPrimary ? 'primary' : 'secondary') . '">';
 
         // Download icon for lead magnets
         if ($showDownloadIcon) {
+            $textColor = $isPrimary ? $style['button_text_color'] : ($style['secondary_button_text_color'] ?? $style['button_bg']);
             $html .= $this->get_download_icon($textColor);
         }
 
@@ -982,16 +990,4 @@ class Forge_CTA {
         return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' . esc_attr($color) . '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ';
     }
 
-    /**
-     * Build inline style string from array
-     */
-    private function build_style_string($styles) {
-        $parts = array();
-        foreach ($styles as $property => $value) {
-            if ($value !== '' && $value !== null) {
-                $parts[] = $property . ':' . $value;
-            }
-        }
-        return implode(';', $parts);
-    }
 }

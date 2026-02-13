@@ -59,7 +59,8 @@ class Forge_Connector {
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
 
         // Initialize CTA handler (shortcodes, tracking, site-wide CTAs)
-        new Forge_CTA();
+        global $forge_cta;
+        $forge_cta = new Forge_CTA();
 
         // Initialize CTA admin page
         if (is_admin()) {

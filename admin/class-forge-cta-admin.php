@@ -117,10 +117,14 @@ class Forge_CTA_Admin {
                                 <th><?php _e('Type', 'forge-connector'); ?></th>
                                 <th><?php _e('Status', 'forge-connector'); ?></th>
                                 <th><?php _e('Shortcode', 'forge-connector'); ?></th>
+                                <th><?php _e('Preview', 'forge-connector'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($ctas as $cta): ?>
+                            <?php
+                            global $forge_cta;
+                            foreach ($ctas as $cta):
+                            ?>
                             <tr>
                                 <td><strong><?php echo esc_html($cta['name']); ?></strong></td>
                                 <td><code><?php echo esc_html($cta['slug']); ?></code></td>
@@ -137,6 +141,34 @@ class Forge_CTA_Admin {
                                     <button type="button" class="button button-small forge-copy-shortcode" data-shortcode='[forge_cta id="<?php echo esc_attr($cta['slug']); ?>"]'>
                                         <?php _e('Copy', 'forge-connector'); ?>
                                     </button>
+                                </td>
+                                <td>
+                                    <button type="button" class="button button-small forge-preview-toggle" data-cta-id="<?php echo esc_attr($cta['id']); ?>">
+                                        <?php _e('Preview', 'forge-connector'); ?>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="forge-preview-row" id="forge-preview-<?php echo esc_attr($cta['id']); ?>" style="display: none;">
+                                <td colspan="6" style="padding: 0; border-top: none;">
+                                    <div style="background: #f9f9f9; border: 1px dashed #ccd0d4; border-radius: 4px; padding: 20px; margin: 8px 16px 16px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                            <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; font-weight: 600;">
+                                                <?php _e('Preview (view-only)', 'forge-connector'); ?>
+                                            </span>
+                                            <a href="<?php echo esc_url('https://forge.gluska.co/ctas/' . $cta['id']); ?>" target="_blank" class="button button-small">
+                                                <?php _e('Edit in Forge', 'forge-connector'); ?> &#8599;
+                                            </a>
+                                        </div>
+                                        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px; overflow: hidden;">
+                                            <?php
+                                            if ($forge_cta) {
+                                                echo $forge_cta->render_cta($cta);
+                                            } else {
+                                                echo '<p style="color: #999;">' . esc_html__('Preview unavailable.', 'forge-connector') . '</p>';
+                                            }
+                                            ?>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -228,6 +260,21 @@ class Forge_CTA_Admin {
                 navigator.clipboard.writeText(shortcode).then(function() {
                     alert('<?php _e('Shortcode copied!', 'forge-connector'); ?>');
                 });
+            });
+
+            // Toggle CTA preview
+            $('.forge-preview-toggle').on('click', function() {
+                var ctaId = $(this).data('cta-id');
+                var $previewRow = $('#forge-preview-' + ctaId);
+                var $btn = $(this);
+
+                if ($previewRow.is(':visible')) {
+                    $previewRow.hide();
+                    $btn.text('<?php _e('Preview', 'forge-connector'); ?>');
+                } else {
+                    $previewRow.show();
+                    $btn.text('<?php _e('Hide Preview', 'forge-connector'); ?>');
+                }
             });
         });
         </script>
