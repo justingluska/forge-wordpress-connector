@@ -20,14 +20,14 @@ class Forge_CTA_Admin {
     }
 
     public function add_menu() {
-        add_menu_page(
-            __('Forge CTAs', 'forge-connector'),
-            __('Forge CTAs', 'forge-connector'),
+        // Add CTAs as submenu under Forge parent menu
+        add_submenu_page(
+            'forge-connector',
+            __('CTAs', 'forge-connector'),
+            __('CTAs', 'forge-connector'),
             'manage_options',
             'forge-ctas',
-            array($this, 'render_page'),
-            'dashicons-megaphone',
-            30
+            array($this, 'render_page')
         );
     }
 
@@ -210,6 +210,28 @@ class Forge_CTA_Admin {
             </div>
         </div>
 
+        <!-- Success Modal -->
+        <div id="forge-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100000; justify-content:center; align-items:center;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:400px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                <div style="font-size:48px; margin-bottom:15px;">✓</div>
+                <h3 style="margin:0 0 10px 0; font-size:18px;">Shortcode Copied!</h3>
+                <p style="margin:0; color:#666;">The shortcode has been copied to your clipboard.</p>
+                <button id="forge-modal-close" class="button button-primary" style="margin-top:20px;">OK</button>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div id="forge-preview-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100000; justify-content:center; align-items:center; overflow-y:auto; padding:20px;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:800px; width:100%; max-height:90vh; overflow-y:auto; position:relative;">
+                <button id="forge-preview-modal-close" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:24px; cursor:pointer; color:#666; line-height:1;">&times;</button>
+                <h2 style="margin-top:0;">CTA Preview</h2>
+                <div id="forge-preview-content" style="margin-top:20px; padding:20px; background:#f9f9f9; border-radius:4px;"></div>
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #ddd; color:#666;">
+                    ⚠️ Preview only. <a href="#" id="forge-edit-link" target="_blank">Edit in Forge →</a>
+                </div>
+            </div>
+        </div>
+
         <script>
         jQuery(document).ready(function($) {
             // Clear cache
@@ -254,26 +276,36 @@ class Forge_CTA_Admin {
                 });
             });
 
-            // Copy shortcode
+            // Copy shortcode - show modal instead of alert
             $('.forge-copy-shortcode').on('click', function() {
                 var shortcode = $(this).data('shortcode');
                 navigator.clipboard.writeText(shortcode).then(function() {
-                    alert('<?php _e('Shortcode copied!', 'forge-connector'); ?>');
+                    $('#forge-modal').css('display', 'flex').hide().fadeIn(200);
                 });
             });
 
-            // Toggle CTA preview
-            $('.forge-preview-toggle').on('click', function() {
-                var ctaId = $(this).data('cta-id');
-                var $previewRow = $('#forge-preview-' + ctaId);
-                var $btn = $(this);
+            // Close success modal
+            $('#forge-modal-close, #forge-modal').on('click', function(e) {
+                if (e.target === this) {
+                    $('#forge-modal').fadeOut(200);
+                }
+            });
 
-                if ($previewRow.is(':visible')) {
-                    $previewRow.hide();
-                    $btn.text('<?php _e('Preview', 'forge-connector'); ?>');
-                } else {
-                    $previewRow.show();
-                    $btn.text('<?php _e('Hide Preview', 'forge-connector'); ?>');
+            // Preview CTA - open in modal
+            $('.forge-preview-toggle').on('click', function(e) {
+                e.preventDefault();
+                var ctaId = $(this).data('cta-id');
+                var $previewContent = $('#forge-preview-' + ctaId + ' td').html();
+
+                $('#forge-preview-content').html($previewContent);
+                $('#forge-edit-link').attr('href', 'https://forge.gluska.co/ctas/' + ctaId);
+                $('#forge-preview-modal').css('display', 'flex').hide().fadeIn(200);
+            });
+
+            // Close preview modal
+            $('#forge-preview-modal-close, #forge-preview-modal').on('click', function(e) {
+                if (e.target === this || e.target.id === 'forge-preview-modal-close') {
+                    $('#forge-preview-modal').fadeOut(200);
                 }
             });
         });

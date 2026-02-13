@@ -193,9 +193,22 @@ class Forge_Connector {
     }
 
     public function add_admin_menu() {
-        add_options_page(
-            __('Forge Connector', 'forge-connector'),
-            __('Forge Connector', 'forge-connector'),
+        // Add top-level Forge menu with Settings as the first page
+        add_menu_page(
+            __('Forge', 'forge-connector'),
+            __('Forge', 'forge-connector'),
+            'manage_options',
+            'forge-connector',
+            array($this, 'render_settings_page'),
+            'dashicons-admin-site-alt3',
+            30
+        );
+
+        // Add Settings submenu (same as parent page)
+        add_submenu_page(
+            'forge-connector',
+            __('Settings', 'forge-connector'),
+            __('Settings', 'forge-connector'),
             'manage_options',
             'forge-connector',
             array($this, 'render_settings_page')
