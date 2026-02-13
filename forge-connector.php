@@ -226,7 +226,8 @@ class Forge_Connector {
     }
 
     public function enqueue_admin_scripts($hook) {
-        if ('settings_page_forge-connector' !== $hook) {
+        // Load on Forge settings page (now a top-level menu, not under Settings)
+        if ('toplevel_page_forge-connector' !== $hook && 'forge_page_forge-ctas' !== $hook) {
             return;
         }
 
