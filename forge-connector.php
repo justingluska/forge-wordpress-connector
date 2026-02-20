@@ -121,74 +121,35 @@ class Forge_Connector {
      * Alternative method that exposes fields directly in the 'meta' parameter
      */
     public function register_post_meta_fields() {
-        $post_types = array('post', 'page');
+        // Register for all public post types (not just post/page)
+        $post_types = get_post_types(array('public' => true));
+
+        $seo_meta_keys = array(
+            // Yoast SEO
+            '_yoast_wpseo_title',
+            '_yoast_wpseo_metadesc',
+            '_yoast_wpseo_focuskw',
+            // Rank Math SEO
+            'rank_math_title',
+            'rank_math_description',
+            'rank_math_focus_keyword',
+            // Genesis SEO
+            '_genesis_title',
+            '_genesis_description',
+        );
 
         foreach ($post_types as $post_type) {
-            // Yoast SEO
-            register_post_meta($post_type, '_yoast_wpseo_title', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            register_post_meta($post_type, '_yoast_wpseo_metadesc', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            register_post_meta($post_type, '_yoast_wpseo_focuskw', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            // Rank Math SEO
-            register_post_meta($post_type, 'rank_math_title', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            register_post_meta($post_type, 'rank_math_description', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            // Genesis SEO
-            register_post_meta($post_type, '_genesis_title', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
-
-            register_post_meta($post_type, '_genesis_description', array(
-                'show_in_rest' => true,
-                'single' => true,
-                'type' => 'string',
-                'auth_callback' => function() {
-                    return current_user_can('edit_posts');
-                }
-            ));
+            foreach ($seo_meta_keys as $meta_key) {
+                register_post_meta($post_type, $meta_key, array(
+                    'show_in_rest'      => true,
+                    'single'            => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'auth_callback'     => function() {
+                        return current_user_can('edit_posts');
+                    },
+                ));
+            }
         }
     }
 
