@@ -55,6 +55,9 @@ class Forge_Connector {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
 
+        // Daily heartbeat cron for version tracking
+        add_action('forge_daily_heartbeat', array($this, 'send_heartbeat'));
+
         // Add settings link to plugins page
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
 
@@ -228,6 +231,46 @@ class Forge_Connector {
         return $links;
     }
 
+    /**
+     * Send a heartbeat to Forge API with plugin version and environment info.
+     * Called on activation, deactivation, and daily via WP cron.
+     *
+     * @param bool $active Whether the plugin is active (false on deactivation)
+     */
+    public static function send_heartbeat($active = true) {
+        $settings = get_option('forge_connector_settings', array());
+
+        // Only send if connected (has connection_key and site_id)
+        if (empty($settings['connection_key']) || empty($settings['forge_site_id'])) {
+            return;
+        }
+
+        global $wp_version;
+
+        $path = '/api/webhooks/wordpress/heartbeat';
+        $body = wp_json_encode(array(
+            'plugin_version' => FORGE_CONNECTOR_VERSION,
+            'wp_version' => $wp_version,
+            'php_version' => phpversion(),
+            'active' => $active,
+            'site_url' => get_site_url(),
+        ));
+
+        $headers = Forge_Auth::sign_request('POST', $path, $body);
+        if (empty($headers)) {
+            return;
+        }
+
+        $headers['Content-Type'] = 'application/json';
+
+        wp_remote_post('https://api.gluska.co' . $path, array(
+            'body' => $body,
+            'headers' => $headers,
+            'timeout' => 10,
+            'blocking' => false, // Fire-and-forget, don't block page load
+        ));
+    }
+
     public static function activate() {
         // Set default options
         if (!get_option('forge_connector_settings')) {
@@ -239,11 +282,23 @@ class Forge_Connector {
             ));
         }
 
+        // Schedule daily heartbeat for version tracking
+        if (!wp_next_scheduled('forge_daily_heartbeat')) {
+            wp_schedule_event(time(), 'daily', 'forge_daily_heartbeat');
+        }
+
         // Flush rewrite rules for REST API
         flush_rewrite_rules();
+
+        // Send activation heartbeat
+        self::send_heartbeat(true);
     }
 
     public static function deactivate() {
+        // Send deactivation heartbeat before clearing cron
+        self::send_heartbeat(false);
+
+        wp_clear_scheduled_hook('forge_daily_heartbeat');
         flush_rewrite_rules();
     }
 
