@@ -1,0 +1,55 @@
+name: Auto Release on Version Bump
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'forge-connector.php'
+
+jobs:
+  check-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract plugin version
+        id: version
+        run: |
+          VERSION=$(grep -oP "Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+" forge-connector.php)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if release already exists
+        id: check
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build plugin zip
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          # Create temp directory with correct plugin folder name
+          mkdir -p /tmp/forge-wordpress-connector
+          # Copy plugin files (exclude git, github, and dev files)
+          rsync -a --exclude='.git' --exclude='.github' --exclude='.gitignore' . /tmp/forge-wordpress-connector/
+          # Create zip from parent dir so folder structure is correct
+          cd /tmp && zip -r forge-wordpress-connector.zip forge-wordpress-connector/
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            /tmp/forge-wordpress-connector.zip \
+            --title "Forge Connector ${{ steps.version.outputs.version }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

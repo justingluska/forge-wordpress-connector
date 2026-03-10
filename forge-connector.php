@@ -43,6 +43,7 @@ class Forge_Connector {
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-posts.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-media.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-cta.php';
+        require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-updater.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'admin/class-forge-settings.php';
         require_once FORGE_CONNECTOR_PLUGIN_DIR . 'admin/class-forge-cta-admin.php';
     }
@@ -56,10 +57,15 @@ class Forge_Connector {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
 
         // Daily heartbeat cron for version tracking
+        // Re-schedule on init as a safety net — WP cron can lose events
         add_action('forge_daily_heartbeat', array($this, 'send_heartbeat'));
+        add_action('init', array($this, 'ensure_heartbeat_scheduled'));
 
         // Add settings link to plugins page
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
+
+        // Initialize auto-updater (checks Forge API for new versions)
+        new Forge_Updater();
 
         // Initialize CTA handler (shortcodes, tracking, site-wide CTAs)
         global $forge_cta;
@@ -229,6 +235,16 @@ class Forge_Connector {
         $settings_link = '<a href="options-general.php?page=forge-connector">' . __('Settings', 'forge-connector') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
+    }
+
+    /**
+     * Ensure the daily heartbeat cron is scheduled.
+     * WP cron events can get lost (db issues, migration, etc.) — this self-heals.
+     */
+    public function ensure_heartbeat_scheduled() {
+        if (!wp_next_scheduled('forge_daily_heartbeat')) {
+            wp_schedule_event(time(), 'daily', 'forge_daily_heartbeat');
+        }
     }
 
     /**
