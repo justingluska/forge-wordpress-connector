@@ -261,6 +261,11 @@ class Forge_Connector {
             return;
         }
 
+        // Ensure auth class is loaded (may not be during activation/deactivation)
+        if (!class_exists('Forge_Auth')) {
+            require_once FORGE_CONNECTOR_PLUGIN_DIR . 'includes/class-forge-auth.php';
+        }
+
         global $wp_version;
 
         $path = '/api/webhooks/wordpress/heartbeat';
